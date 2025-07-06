@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+    <style>
+        /* General Body and Container Styles */
+* {
+    box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Modern, clean font */
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* Align container to the top */
+    min-height: 100vh;
+    background-color: #eef2f7; /* Light, soft background */
+    margin: 0;
+    padding: 10px; /* Padding from top and sides */
+    box-sizing: border-box;
+    color: #333;
+}
+
+.container {
+    background-color: #ffffff; /* Pure white for content area */
+    padding: 20px;
+    border-radius: 12px; /* More rounded corners */
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); /* Softer, deeper shadow */
+    width: 100%;
+    max-width: 1300px; /* Slightly wider container */
+    height: 85vh; /* Set container height to 85% of viewport height */
+    display: flex;
+    flex-direction: column; /* Stack title and app-layout vertically */
+    gap: 25px; /* Increased spacing between sections */
+}
+
+/* Headings */
+h1 {
+    text-align: center;
+    color: #2c3e50; /* Darker, more professional heading color */
+    margin-bottom: 0; /* No bottom margin as app-layout handles spacing */
+    font-size: 2.5em;
+    font-weight: 600;
+}
+
+h2 {
+    color: #34495e;
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.6em;
+    font-weight: 500;
+}
+
+/* App Layout for Side Controls */
+.app-layout {
+    display: flex;
+    flex-direction: row; /* Controls, gallery, and story panel side-by-side */
+    gap: 25px; /* Space between sections */
+    
+    flex-grow: 1; /* Allow app-layout to take available vertical space */
+    height: 100%; /* Ensure app-layout takes full height of container */
+    
+}
+
+/* Controls Section (now a sidebar) */
+.controls {
+    flex: 0 0 180px; /* Fixed width for controls sidebar */
+    display: flex;
+    flex-direction: column; /* Stack buttons vertically */
+    gap: 15px; /* Spacing between control elements */
+    padding: 20px;
+    border: 1px solid #e0e7ed;
+    border-radius: 10px;
+    background-color: #fdfdfd;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* File Input Wrapper */
+.file-input-wrapper {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    border-radius: 8px; /* Apply border-radius to the wrapper */
+    align-items: center; /* Center children horizontally */
+}
+
+.file-input-wrapper input[type="file"] {
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.file-input-wrapper .button {
+    /* Inherit button styles */
+    width: 100%;
+    padding: 12px 22px;
+    background-color: #007bff; /* Primary blue */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.05em;
+    font-weight: 500;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    display: block; /* Ensure it takes full width */
+}
+
+.file-input-wrapper .button:hover {
+    background-color: #0056b3;
+    transform: translateY(-1px);
+}
+
+.file-input-wrapper .button:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+
+/* Other Buttons */
+.controls button,
+#readStoryButton {
+    width: 100%; /* Full width within sidebar/panel */
+    padding: 12px 22px;
+    background-color: #007bff; /* Primary blue */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.05em;
+    font-weight: 500;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.controls button:hover,
+#readStoryButton:hover {
+    background-color: #0056b3; /* Darker blue on hover */
+    transform: translateY(-1px); /* Slight lift effect */
+}
+
+.controls button:active,
+#readStoryButton:active {
+    transform: translateY(0); /* Press effect */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+#readStoryButton {
+    background-color: #28a745; /* Green for read button */
+}
+
+#readStoryButton:hover {
+    background-color: #218838;
+}
+
+.controls button:disabled,
+#readStoryButton:disabled {
+    background-color: #cccccc; /* Grey for disabled */
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+
+
+/* Image Gallery */
+.image-gallery {
+    width: 200px; /* Fixed width for gallery */
+    border: 1px solid #e0e7ed; /* Lighter border */
+    padding: 15px;
+    border-radius: 10px;
+    background-color: #fdfdfd;
+    display: flex;
+    flex-direction: column; /* Stack thumbnails vertically */
+    gap: 10px; /* Spacing between thumbnails */
+    overflow-y: auto; /* Enable vertical scrolling */
+    justify-content: flex-start; /* Align items to the start */
+    align-items: center; /* Center thumbnails horizontally */
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+    max-height: 600px; /* Set a maximum height to force scrolling */
+}
+
+.image-gallery .placeholder {
+    color: #8899aa;
+    text-align: center;
+    width: 100%;
+    padding: 60px;
+    font-size: 1.1em;
+}
+
+.image-thumbnail {
+    width: 120px; /* Smaller thumbnails for vertical scroll */
+    height: 120px;
+    border: 3px solid transparent; /* Thicker border for selection */
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    position: relative;
+    background-color: #fff;
+}
+
+.image-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.image-thumbnail.selected {
+    border-color: #007bff; /* Primary blue for selected */
+    transform: scale(1.03); /* More pronounced scale */
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.image-thumbnail:hover {
+    border-color: #0056b3; /* Darker blue on hover */
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+}
+
+.image-thumbnail .image-name {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(0, 0, 0, 0.7); /* Darker overlay for text */
+    color: white;
+    font-size: 0.8em; /* Smaller font for thumbnail name */
+    padding: 4px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 400;
+}
+
+/* Story Panel */
+.story-panel {
+    flex: 1; /* Story panel takes remaining horizontal space */
+    min-width: 500px; /* Larger minimum width for story panel */
+    border: 1px solid #e0e7ed;
+    padding: 25px;
+    border-radius: 10px;
+    background-color: #fdfdfd; /* Removed temporary background */
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Added gap for spacing between children */
+}
+
+.story-panel h2 {
+    margin-top: 0;
+    margin-bottom: 0; /* Removed fixed margin, use gap on parent */
+}
+
+.selected-image-display {
+    flex: 4; /* Image display takes 80% of vertical space */
+    text-align: center;
+    margin-bottom: 0; /* Removed margin-bottom to prevent extra space */
+    padding: 10px;
+    background-color: #f0f4f8; /* Light background for image display */
+    border-radius: 8px;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
+    display: flex; /* Enable flexbox for vertical centering */
+    align-items: center; /* Center image vertically */
+    justify-content: center; /* Center image horizontally */
+}
+
+.selected-image-display img {
+    max-width: 100%;
+    height: 100%; /* Make image take 100% of container height */
+    object-fit: contain; /* Ensure entire image is visible, maintaining aspect ratio */
+    border-radius: 6px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+}
+
+#storyTextarea {
+    width: 100%;
+    flex: 1; /* Textarea takes 20% of vertical space */
+    min-height: unset; /* Remove min-height to allow flex to control height */
+    padding: 18px;
+    border: 1px solid #c0d0e0;
+    border-radius: 8px;
+    font-size: 1.8em; /* Much larger font size */
+    line-height: 1.7;
+    resize: vertical;
+    background-color: #fdfdfd;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    margin-top: 0; /* Removed fixed margin, use gap on parent */
+}
+
+#storyTextarea:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+    outline: none;
+}
+
+#storyTextarea:disabled {
+    background-color: #e9eef3; /* Lighter disabled background */
+    color: #777;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+#selectedImageName {
+    font-style: italic;
+    color: #556677;
+    text-align: center;
+    font-size: 0.95em;
+    margin-top: 10px;
+    font-weight: 400;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 992px) {
+    .app-layout {
+        flex-direction: column; /* Stack controls and main content vertically */
+    }
+    .controls {
+        flex: none; /* Remove fixed width */
+        width: 100%; /* Take full width */
+        flex-direction: row; /* Arrange buttons horizontally */
+        flex-wrap: wrap; /* Allow buttons to wrap */
+        justify-content: center;
+    }
+    .main-content {
+        flex-direction: column; /* Stack gallery and story panel vertically */
+    }
+    
+    .story-panel {
+        min-width: unset;
+        width: 100%;
+    }
+    .container {
+        padding: 20px;
+        height: auto; /* Allow height to adjust on small screens */
+    }
+    h1 {
+        font-size: 2em;
+    }
+}
+
+@media (max-width: 576px) {
+    .controls {
+        flex-direction: column;
+    }
+    .controls input[type="file"] {
+        width: 100%;
+    }
+    .controls button {
+        width: 100%;
+    }
+    .image-thumbnail {
+        width: 80px;
+        height: 80px;
+    }
+    .image-gallery {
+        padding: 10px;
+    }
+    .story-panel {
+        padding: 20px;
+    }
+    h1 {
+        font-size: 1.8em;
+    }
+}
+    </style>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Storyteller</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Image Storyteller</h1>
+
+        <div class="app-layout">
+            <div class="controls">
+                <div class="file-input-wrapper">
+                    <input type="file" id="imageInput" accept="image/*" multiple>
+                    <label for="imageInput" class="button">Choose Files</label>
+                    
+                </div>
+                <button id="saveButton">Save Stories</button>
+                <button id="loadButton">Load Stories</button>
+                <button id="clearAllButton">Clear All</button>
+                <button id="selectVoiceButton">Select Voice</button>
+            </div>
+
+            <div class="image-gallery" id="imageGallery">
+                <!-- Images will be displayed here -->
+                <p class="placeholder">Select images to get started!</p>
+            </div>
+
+            <div class="story-panel">
+                <h2>Your Story</h2>
+                <div class="selected-image-display">
+                    <img id="largeImageDisplay" src="" alt="Selected Image">
+                </div>
+                <textarea id="storyTextarea" placeholder="Write your story here..." disabled></textarea>
+                <button id="readStoryButton" disabled>Read Story</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+const imageGallery = document.getElementById('imageGallery');
+const storyTextarea = document.getElementById('storyTextarea');
+const saveButton = document.getElementById('saveButton');
+const loadButton = document.getElementById('loadButton');
+const clearAllButton = document.getElementById('clearAllButton'); // New button
+const largeImageDisplay = document.getElementById('largeImageDisplay');
+const readStoryButton = document.getElementById('readStoryButton');
+const selectVoiceButton = document.getElementById('selectVoiceButton');
+
+let imagesData = []; // Stores { id, name, dataURL, story }
+let selectedImageId = null;
+
+// Function to render images in the gallery
+function renderImages() {
+    imageGallery.innerHTML = ''; // Clear existing images
+    if (imagesData.length === 0) {
+        imageGallery.innerHTML = '<p class="placeholder">Select images to get started!</p>';
+        storyTextarea.disabled = true;
+        storyTextarea.value = '';
+        largeImageDisplay.src = '';
+        readStoryButton.disabled = true;
+        return;
+    }
+
+    imagesData.forEach(image => {
+        const thumbnailDiv = document.createElement('div');
+        thumbnailDiv.classList.add('image-thumbnail');
+        if (image.id === selectedImageId) {
+            thumbnailDiv.classList.add('selected');
+        }
+        thumbnailDiv.dataset.id = image.id;
+
+        const img = document.createElement('img');
+        img.src = image.dataURL;
+        img.alt = image.name;
+
+        const nameSpan = document.createElement('span');
+        nameSpan.classList.add('image-name');
+        nameSpan.textContent = image.name;
+
+        thumbnailDiv.appendChild(img);
+        thumbnailDiv.appendChild(nameSpan);
+        imageGallery.appendChild(thumbnailDiv);
+
+        thumbnailDiv.addEventListener('click', () => selectImage(image.id));
+    });
+
+    // Re-select the image if one was selected before re-rendering
+    if (selectedImageId) {
+        selectImage(selectedImageId, false); // Don't speak on re-render
+    }
+}
+
+// Function to select an image
+function selectImage(id, speak = true) {
+    selectedImageId = id;
+    const selectedImage = imagesData.find(img => img.id === id);
+
+    // Update UI
+    document.querySelectorAll('.image-thumbnail').forEach(thumb => {
+        thumb.classList.remove('selected');
+    });
+    const currentThumbnail = document.querySelector(`.image-thumbnail[data-id="${id}"]`);
+    if (currentThumbnail) {
+        currentThumbnail.classList.add('selected');
+    }
+
+    if (selectedImage) {
+        storyTextarea.value = selectedImage.story || '';
+        storyTextarea.disabled = false;
+        largeImageDisplay.src = selectedImage.dataURL;
+        readStoryButton.disabled = !selectedImage.story; // Disable if no story
+        if (speak && selectedImage.story) {
+            speakStory(selectedImage.story);
+        }
+    } else {
+        storyTextarea.value = '';
+        storyTextarea.disabled = true;
+        largeImageDisplay.src = '';
+        readStoryButton.disabled = true;
+    }
+}
+
+// Function to speak the story
+let _selectedVoice = null;
+let availableVoices = [];
+
+// Function to set the preferred voice
+function setSelectedVoice() {
+    availableVoices = speechSynthesis.getVoices();
+    console.log('Available voices:', availableVoices);
+
+    // Prioritize Microsoft Aria Online (Natural) - English (United States)
+    _selectedVoice = availableVoices.find(voice => voice.name === 'Microsoft Aria Online (Natural) - English (United States)' && voice.lang === 'en-US');
+
+    // If Aria not found, try Microsoft Guy Online (Natural) - English (United States)
+    if (!_selectedVoice) {
+        _selectedVoice = availableVoices.find(voice => voice.name === 'Microsoft Guy Online (Natural) - English (United States)' && voice.lang === 'en-US');
+    }
+
+    // Fallback to other voices if specific Microsoft voices are not found
+    if (!_selectedVoice) {
+        _selectedVoice = availableVoices.find(voice => voice.name.includes('Google US English') && voice.lang === 'en-US') ||
+                        availableVoices.find(voice => voice.name.toLowerCase().includes('female') && voice.lang === 'en-US') ||
+                        availableVoices.find(voice => voice.name.toLowerCase().includes('zira') && voice.lang === 'en-US') ||
+                        availableVoices.find(voice => voice.name.toLowerCase().includes('ava') && voice.lang === 'en-US') ||
+                        availableVoices.find(voice => voice.name.toLowerCase().includes('samantha') && voice.lang === 'en-US') ||
+                        availableVoices.find(voice => voice.lang === 'en-US' && voice.default);
+    }
+
+    if (_selectedVoice) {
+        console.log('Selected voice:', _selectedVoice.name);
+    } else {
+        console.log('No specific voice found, using browser default or first available en-US voice.');
+        _selectedVoice = availableVoices.find(voice => voice.lang === 'en-US'); // Ensure a fallback if previous specific searches fail
+    }
+}
+
+// Listen for voices to be loaded
+speechSynthesis.onvoiceschanged = setSelectedVoice;
+
+// Call it once in case voices are already loaded
+setSelectedVoice();
+
+// Function to speak the story
+function speakStory(text) {
+    if ('speechSynthesis' in window) {
+        if (!text) {
+            alert('There is no story to read.');
+            return;
+        }
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US'; // Default language
+
+        if (_selectedVoice) {
+            utterance.voice = _selectedVoice;
+        } else {
+            // If no specific voice found, try to find one just before speaking
+            setSelectedVoice(); // Attempt to set again
+            if (_selectedVoice) {
+                utterance.voice = _selectedVoice;
+            }
+        }
+
+        speechSynthesis.cancel(); // Stop any ongoing speech
+        speechSynthesis.speak(utterance);
+    } else {
+        alert('Text-to-speech not supported in your browser.');
+    }
+}
+
+// Function to show voice selection to the user
+function showVoiceSelection() {
+    if (!('speechSynthesis' in window) || availableVoices.length === 0) {
+        alert('Speech synthesis or voices are not available in your browser.');
+        return;
+    }
+
+    let voiceListText = 'Select a voice by number:\n';
+    availableVoices.forEach((voice, index) => {
+        voiceListText += `${index}: ${voice.name} (${voice.lang})\n`;
+    });
+
+    const selectedIndex = prompt(voiceListText + '\nEnter the number of your desired voice:');
+
+    if (selectedIndex !== null) {
+        const index = parseInt(selectedIndex, 10);
+        if (!isNaN(index) && index >= 0 && index < availableVoices.length) {
+            _selectedVoice = availableVoices[index];
+            alert(`Voice set to: ${_selectedVoice.name}`);
+        } else {
+            alert('Invalid selection. Please enter a valid number.');
+        }
+    }
+}
+
+// Event listener for voice selection button
+selectVoiceButton.addEventListener('click', showVoiceSelection);
+
+// Event listener for image input change
+imageInput.addEventListener('change', (event) => {
+    const files = event.target.files;
+    if (files.length === 0) {
+        return;
+    }
+
+    
+
+    const initialImageCount = imagesData.length; // Store current count
+
+    Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const newImage = {
+                id: Date.now() + Math.random(), // Simple unique ID
+                name: file.name,
+                dataURL: e.target.result,
+                story: '' // Initialize empty story
+            };
+            imagesData.push(newImage);
+            renderImages();
+            // Automatically select the first newly added image if it's the only one or first in a new batch
+            if (initialImageCount === 0 && imagesData.length === 1) {
+                selectImage(newImage.id);
+            }
+        };
+        reader.readAsDataURL(file);
+    });
+});
+
+// Event listener for story textarea input
+storyTextarea.addEventListener('input', () => {
+    if (selectedImageId) {
+        const image = imagesData.find(img => img.id === selectedImageId);
+        if (image) {
+            image.story = storyTextarea.value;
+            readStoryButton.disabled = !image.story; // Enable/disable read button based on story content
+        }
+    }
+});
+
+// Event listener for Read Story button
+readStoryButton.addEventListener('click', () => {
+    if (selectedImageId) {
+        const selectedImage = imagesData.find(img => img.id === selectedImageId);
+        if (selectedImage && selectedImage.story) {
+            speakStory(selectedImage.story);
+        }
+    }
+});
+
+// Save functionality using File System Access API
+saveButton.addEventListener('click', async () => {
+    try {
+        // Request a file handle for saving
+        const fileHandle = await window.showSaveFilePicker({
+            types: [{
+                description: 'JSON Files',
+                accept: { 'application/json': ['.json'] },
+            }],
+            suggestedName: 'image_stories.json',
+        });
+
+        // Create a WritableStream to write to the file
+        const writableStream = await fileHandle.createWritable();
+
+        // Write the current imagesData to the file as JSON
+        await writableStream.write(JSON.stringify(imagesData, null, 2));
+
+        // Close the file
+        await writableStream.close();
+        alert('Stories saved successfully!');
+    } catch (error) {
+        console.error('Error saving file:', error);
+        if (error.name !== 'AbortError') { // User cancelled the picker
+            alert('Failed to save stories. See console for details.');
+        }
+    }
+});
+
+// Load functionality using File System Access API
+loadButton.addEventListener('click', async () => {
+    try {
+        // Request a file handle for opening
+        const [fileHandle] = await window.showOpenFilePicker({
+            types: [{
+                description: 'JSON Files',
+                accept: { 'application/json': ['.json'] },
+            }],
+            multiple: false,
+        });
+
+        // Get the file content
+        const file = await fileHandle.getFile();
+        const content = await file.text();
+
+        // Parse the JSON content
+        const loadedData = JSON.parse(content);
+        console.log('Loaded data:', loadedData);
+
+        // Validate loaded data structure (basic check)
+        if (Array.isArray(loadedData) && loadedData.every(item => 'id' in item && 'name' in item && 'dataURL' in item && 'story' in item)) {
+            imagesData = loadedData;
+            selectedImageId = null; // Reset selection
+            renderImages();
+            alert('Stories loaded successfully!');
+        } else {
+            alert('Invalid file format. Please select a valid image_stories.json file.');
+        }
+
+    } catch (error) {
+        console.error('Error loading file:', error);
+        if (error.name !== 'AbortError') { // User cancelled the picker
+            alert('Failed to load stories. See console for details.');
+        }
+    }
+});
+
+clearAllButton.addEventListener('click', () => {
+    if (confirm('Are you sure you want to clear all images and stories? This cannot be undone without loading a saved file.')) {
+        imagesData = [];
+        selectedImageId = null;
+        renderImages();
+        alert('All images and stories cleared.');
+    }
+});
+
+// Initial render
+renderImages();
+
+    </script>
+</body>
+</html>
