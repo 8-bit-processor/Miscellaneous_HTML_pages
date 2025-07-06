@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<style>
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f0f2f5;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+}
+
+.container {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    width: 100%;
+    max-width: 1200px;
+    box-sizing: border-box;
+}
+
+h1 {
+    color: #0056b3;
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 2.2em;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 15px;
+}
+
+h2 {
+    color: #0056b3;
+    margin-top: 25px;
+    margin-bottom: 15px;
+    font-size: 1.6em;
+}
+
+.add-referral-section,
+.referral-list-section {
+    margin-bottom: 30px;
+    padding: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: #fdfdfd;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group select {
+    width: calc(100% - 22px);
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1em;
+}
+
+button {
+    background-color: #007bff;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1.1em;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    table-layout: fixed;
+}
+
+table th,
+table td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: left;
+    vertical-align: top; /* Align content to top for better appearance with multi-line messages */
+}
+
+table th {
+    background-color: #007bff;
+    color: white;
+    font-weight: bold;
+    text-align: center;
+}
+
+table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+table tr:hover {
+    background-color: #f1f1f1;
+}
+
+.actions button,
+.message-button {
+    padding: 8px 12px;
+    font-size: 0.9em;
+    margin-right: 8px; /* Consistent spacing */
+}
+
+.actions button.delete {
+    background-color: #dc3545;
+}
+
+.actions button:hover {
+    opacity: 0.9;
+}
+
+#noReferralsMessage {
+    text-align: center;
+    color: #777;
+    margin-top: 20px;
+    font-style: italic;
+}
+
+.messaged-row {
+    background-color: #e6ffe6; /* Light green for messaged rows */
+}
+
+.message-button {
+    background-color: #6c757d; /* Grey for message button */
+}
+
+.message-button:hover {
+    background-color: #5a6268;
+}
+
+.message-display {
+    margin-left: 10px;
+    font-style: italic;
+    color: #007bff;
+    word-wrap: break-word; /* Allow long messages to wrap */
+}
+
+table td select.status-select {
+    width: 100%; /* Make select fill its container */
+    box-sizing: border-box; /* Include padding and border in the element's total width */
+}
+</style>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community Care Arrivals and Departures Information Board</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Community Care Referrals Information Board</h1>
+
+        <div class="add-referral-section">
+            <h2>Add New Referral</h2>
+            <form id="referralForm">
+                <div class="form-group">
+                    <label for="patientName">Patient Name:</label>
+                    <input type="text" id="patientName" required>
+                </div>
+                <div class="form-group">
+                    <label for="referralDate">Referral Date:</label>
+                    <input type="date" id="referralDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="notes">Notes:</label>
+                    <input type="text" id="notes" required>
+                </div>
+                <div class="form-group">
+                    <label for="status">Status:</label>
+                    <select id="status" required>
+                        <option value="Pending">Pending</option>
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                        <option value="Awaiting Records">Awaiting Records</option>
+                        <option value="No Response from Vendor">No Response from Vendor</option>
+                        <option value="Patient Failed to Schedule">Patient Failed to Schedule</option>
+                        <option value="Records Received">Records Received</option>
+                        <option value="Additional Authorization Requested">Additional Authorization Requested</option>
+                    </select>
+                </div>
+                <button type="submit">Add Referral</button>
+            </form>
+        </div>
+
+        <div class="referral-list-section">
+            <h2>Current Referrals</h2>
+            <table id="referralTable">
+                <thead>
+                    <tr>
+                        <th>Patient Name</th>
+                        <th>Referral Date</th>
+                        <th>Notes</th>
+                        <th>Status</th>
+                        <th>Message</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Referrals will be loaded here by JavaScript -->
+                </tbody>
+            </table>
+            <p id="noReferralsMessage">No referrals added yet.</p>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM Content Loaded - Script is running.');
+    const referralForm = document.getElementById('referralForm');
+    const referralTableBody = document.querySelector('#referralTable tbody');
+    const noReferralsMessage = document.getElementById('noReferralsMessage');
+
+    let referrals = JSON.parse(localStorage.getItem('referrals')) || [];
+    console.log('Initial referrals loaded:', referrals);
+
+    function saveReferrals() {
+        localStorage.setItem('referrals', JSON.stringify(referrals));
+        console.log('Referrals saved to localStorage:', referrals);
+    }
+
+    function renderReferrals() {
+        referralTableBody.innerHTML = '';
+        if (referrals.length === 0) {
+            noReferralsMessage.style.display = 'block';
+            referralTableBody.style.display = 'none';
+            return;
+        } else {
+            noReferralsMessage.style.display = 'none';
+            referralTableBody.style.display = 'table-row-group';
+        }
+
+        referrals.forEach((referral, index) => {
+            const row = referralTableBody.insertRow();
+            if (referral.isMessaged) {
+                row.classList.add('messaged-row');
+            }
+            row.innerHTML = `
+                <td>${referral.patientName}</td>
+                <td>${referral.referralDate}</td>
+                <td>${referral.notes}</td>
+                <td>
+                    <select class="status-select" data-index="${index}">
+                        <option value="Pending" ${referral.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                        <option value="Scheduled" ${referral.status === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
+                        <option value="Completed" ${referral.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                        <option value="Cancelled" ${referral.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                        <option value="Awaiting Records" ${referral.status === 'Awaiting Records' ? 'selected' : ''}>Awaiting Records</option>
+                        <option value="No Response from Vendor" ${referral.status === 'No Response from Vendor' ? 'selected' : ''}>No Response from Vendor</option>
+                        <option value="Patient Failed to Schedule" ${referral.status === 'Patient Failed to Schedule' ? 'selected' : ''}>Patient Failed to Schedule</option>
+                        <option value="Records Received" ${referral.status === 'Records Received' ? 'selected' : ''}>Records Received</option>
+                        <option value="Additional Authorization Requested" ${referral.status === 'Additional Authorization Requested' ? 'selected' : ''}>Additional Authorization Requested</option>
+                    </select>
+                </td>
+                <td>
+                    <button class="message-button" data-index="${index}">Message</button>
+                    <span class="message-display">${referral.messageText || ''}</span>
+                </td>
+                <td class="actions">
+                    <button class="edit" data-index="${index}">Edit</button>
+                    <button class="delete" data-index="${index}">Delete</button>
+                </td>
+            `;
+        });
+
+        addEventListenersToButtons();
+        addEventListenersToStatusSelects();
+        addEventListenersToMessageButtons();
+    }
+
+    function addEventListenersToButtons() {
+        document.querySelectorAll('.edit').forEach(button => {
+            button.onclick = (event) => editReferral(event.target.dataset.index);
+        });
+        document.querySelectorAll('.delete').forEach(button => {
+            button.onclick = (event) => deleteReferral(event.target.dataset.index);
+        });
+    }
+
+    function addEventListenersToStatusSelects() {
+        document.querySelectorAll('.status-select').forEach(select => {
+            select.onchange = (event) => updateReferralStatus(event.target.dataset.index, event.target.value);
+        });
+    }
+
+    function addEventListenersToMessageButtons() {
+        document.querySelectorAll('.message-button').forEach(button => {
+            button.onclick = (event) => toggleMessage(event.target.dataset.index);
+        });
+    }
+
+    let editingIndex = -1; // To keep track of the referral being edited
+
+    function addReferral(event) {
+        event.preventDefault();
+        console.log('Add Referral function called.');
+
+        const patientName = document.getElementById('patientName').value;
+        const referralDate = document.getElementById('referralDate').value;
+        const notes = document.getElementById('notes').value;
+        const status = document.getElementById('status').value;
+
+        console.log('New referral data:', { patientName, referralDate, notes, status });
+
+        if (editingIndex === -1) {
+            // Add new referral
+            const newReferral = { patientName, referralDate, notes, status, isMessaged: false, messageText: '' };
+            referrals.push(newReferral);
+            console.log('Referral added:', newReferral);
+        } else {
+            // Update existing referral
+            referrals[editingIndex] = { patientName, referralDate, notes, status, isMessaged: referrals[editingIndex].isMessaged, messageText: referrals[editingIndex].messageText };
+            editingIndex = -1; // Reset editing index
+            const submitButton = referralForm.querySelector('button[type="submit"]');
+            submitButton.textContent = 'Add Referral'; // Revert button text
+            console.log('Referral updated at index', editingIndex, ':', referrals[editingIndex]);
+        }
+        
+        saveReferrals();
+        renderReferrals();
+        referralForm.reset();
+    }
+
+    function editReferral(index) {
+        console.log('Edit Referral function called for index:', index);
+        editingIndex = parseInt(index);
+        const referralToEdit = referrals[editingIndex];
+        console.log('Referral to edit:', referralToEdit);
+
+        document.getElementById('patientName').value = referralToEdit.patientName;
+        document.getElementById('referralDate').value = referralToEdit.referralDate;
+        document.getElementById('notes').value = referralToEdit.notes;
+        document.getElementById('status').value = referralToEdit.status;
+
+        const submitButton = referralForm.querySelector('button[type="submit"]');
+        submitButton.textContent = 'Update Referral';
+    }
+
+    function deleteReferral(index) {
+        if (confirm('Are you sure you want to delete this referral?')) {
+            referrals.splice(index, 1);
+            saveReferrals();
+            renderReferrals();
+        }
+    }
+
+    function updateReferralStatus(index, newStatus) {
+        referrals[index].status = newStatus;
+        saveReferrals();
+        renderReferrals(); // Re-render to reflect changes if needed, though not strictly necessary for just status
+    }
+
+    function toggleMessage(index) {
+        const referral = referrals[index];
+        referral.isMessaged = !referral.isMessaged;
+
+        if (referral.isMessaged) {
+            const message = prompt('Enter your message:');
+            if (message !== null) {
+                referral.messageText = message;
+            } else {
+                referral.isMessaged = false; // Revert if user cancels
+            }
+        } else {
+            referral.messageText = '';
+        }
+        saveReferrals();
+        renderReferrals();
+    }
+
+    referralForm.addEventListener('submit', addReferral);
+
+    renderReferrals();
+});
+    </script>
+</body>
+</html>
