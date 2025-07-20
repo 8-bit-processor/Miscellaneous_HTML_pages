@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Document Formatter</title>
+<style>
+  html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: sans-serif;
+  display: flex;
+  flex-direction: column;
+  background-color: #e0e0e0; /* Darker shade */
+}
+
+  #app {
+    max-width: none;
+    margin: 0 auto;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+  }
+  h1 {
+    text-align: center;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    color: #333;
+  }
+  .container {
+    display: flex;
+    gap: 20px;
+    flex-grow: 1;
+  }
+  .column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+  #file-input, #delimiter-input-container, #note-container {
+    margin-bottom: 10px;
+  }
+  #applied-delimiters {
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid #eee;
+    overflow-y: auto;
+    max-height: 150px; /* Fixed height for delimiters */
+    border-radius: 5px;
+    background-color: #fdfdfd;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  #output, #delimiter-output {
+    border: 1px solid #eee;
+    padding: 10px;
+    background-color: #fdfdfd;
+    overflow-y: auto;
+    flex-grow: 1; /* Allow these to grow and take available space */
+    min-height: 100px; /* Ensure a minimum height */
+    height: 0; /* Crucial for flex-grow to work correctly with overflow */
+    border-radius: 5px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  #note-display {
+    width: 100%;
+    box-sizing: border-box;
+    flex-grow: 1;
+    height: 0; /* Crucial for flex-grow to work correctly with overflow */
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 5px;
+  }
+  #trim-delimiter-output-btn {
+      display: block;
+      margin-top: 10px;
+      padding: 8px 15px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      align-self: flex-start; /* Prevent expansion */
+      flex-shrink: 0; /* Prevent shrinking */
+  }
+  #trim-delimiter-output-btn:hover {
+      background-color: #0056b3;
+  }
+  button {
+      padding: 8px 15px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-left: 5px;
+  }
+  button:hover {
+      background-color: #218838;
+  }
+  label {
+      margin-right: 10px;
+  }
+  input[type="text"], input[type="number"] {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      flex-grow: 1;
+  }
+  #delimiter-input-container {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+  }
+  ul {
+      list-style: none;
+      padding: 0;
+  }
+  ul#trim-sequence-list {
+  }
+  li {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+  }
+  li button {
+      margin-left: 10px;
+      padding: 5px 10px;
+      font-size: 0.8em;
+  }
+  li button:first-of-type {
+      background-color: #17a2b8; /* Info color for Show */
+  }
+  li button:first-of-type:hover {
+      background-color: #138496;
+  }
+  li button:last-of-type {
+      background-color: #dc3545; /* Danger color for Delete */
+  }
+  li button:last-of-type:hover {
+      background-color: #c82333;
+  }
+  strong {
+      color: #555;
+  }
+  em {
+      color: #888;
+  }
+  pre {
+      background-color: #f0f0f0;
+      padding: 5px;
+      border-radius: 3px;
+      white-space: pre-wrap; /* CSS3 */
+      white-space: -moz-pre-wrap; /* Firefox */
+      white-space: -pre-wrap; /* Opera 4-6 */
+      white-space: -o-pre-wrap; /* Opera 7 */
+      word-wrap: break-word; /* Internet Explorer 5.5+ */
+  }
+</style>
+</head>
+<body>
+<div id="app" style="max-width: none;">
+  <h1>All Purpose Document Recycler and Formatter</h1>
+  <div class="container">
+    <div class="column">
+      <h2>Select Old Document</h2>
+      <input type="file" id="file-input">
+      <div id="delimiter-input-container">
+        <label for="delimiter-input">Define An Identifying Label of The Textblock :</label>
+        <input type="text" id="delimiter-input" value="">
+        <button id="add-delimiter-btn">Add Textblock Label</button>
+      </div>
+      <div id="applied-delimiters">
+        <strong>Applied Textblock Labels:</strong>
+        <ul id="delimiter-list"></ul>
+      </div>
+      <div id="note-container" style="flex-grow: 1; display: flex; flex-direction: column;">
+          <h2>Document Content</h2>
+          <textarea id="note-display" style="flex-grow: 1;"></textarea>
+      </div>
+    </div>
+    <div class="column">
+      <h2>TextBlock Labels and Values</h2>
+      <div id="output"></div>
+      <h2>Examine and Revise Trimming Effect on TextBlock</h2>
+      <button id="trim-delimiter-output-btn">Trim TextBlock Output</button>
+      <div id="delimiter-output"></div>
+    </div>
+    <div class="column">
+      <h2>User's Settings Controls</h2>
+      <div id="trim-settings-container">
+        <div>
+          <label for="short-line-length">Trim Short Lines With Length Less Than:</label>
+          <input type="number" id="short-line-length" value="50" style="width: 60px;">
+        </div>
+        <div style="margin-top: 10px;">
+          <label for="trim-sequence-input">Enter Text or Character Sequences in lines to be trimmed:</label>
+          <input type="text" id="trim-sequence-input" value="">
+          <button id="add-trim-sequence-btn">Add Text Sequence</button>
+        </div>
+        <div id="applied-trim-sequences" style="margin-top: 10px;">
+          <strong>Applied Text Triming Sequences:</strong>
+          <ul id="trim-sequence-list"></ul>
+        </div>
+      </div>
+      <div id="settings-file-io" style="margin-top: 20px;">
+        <div>
+          <label for="export-filename">Save Settings as :</label>
+          <input type="text" id="export-filename" value="note-formatter-settings.json">
+        </div>
+        <button id="export-settings-btn" style="margin-top: 10px;">Save Settings</button>
+        <button id="import-settings-btn" style="margin-top: 10px;">Load Settings</button>
+        <input type="file" id="import-settings-input" style="display: none;">
+      </div>
+    </div>
+    <div class="column">
+      <h2>New Document Generation</h2>
+      <div id="document-generation-container">
+        <label for="document-delimiters-select">Select TextBlock Labels:</label>
+        <select id="document-delimiters-select" multiple size="10" style="width: 100%; margin-bottom: 10px;"></select>
+        <button id="move-up-btn">Move Up</button>
+        <button id="move-down-btn">Move Down</button>
+        <button id="generate-document-btn" style="margin-top: 10px;">Generate Document</button>
+        <textarea id="generated-document-output" style="width: 100%; height: 200px; margin-top: 10px;"></textarea>
+        <button id="save-document-btn" style="margin-top: 10px;">Save Document</button>
+      </div>
+    </div>
+  </div>
+  </div>
+<script>
+    let delimiters = [];
+let shortLineLength = 50;
+let trimSequences = ['---', '***', '==='];
+let exportFilename = 'note-formatter-settings.json';
+let processedNoteData = {}; // Global to store processed data
+
+function updateDelimiterList() {
+  const delimiterList = document.getElementById('delimiter-list');
+  const noteDisplay = document.getElementById('note-display');
+  const delimiterOutput = document.getElementById('delimiter-output');
+
+  delimiterList.innerHTML = '';
+  delimiters.forEach((delimiter, index) => {
+    const li = document.createElement('li');
+    li.textContent = delimiter;
+
+    const showBtn = document.createElement('button');
+    showBtn.textContent = 'Show';
+    showBtn.style.marginLeft = '10px';
+    showBtn.addEventListener('click', () => {
+      const text = noteDisplay.value;
+      const processedData = processText(text);
+      let html = '<ul>';
+      for (const key in processedData) {
+        if (processedData[key].delimiter === delimiter) {
+          const { value, originalKey } = processedData[key];
+          html += '<li style="margin-bottom: 10px;">';
+          html += `<strong>${originalKey}</strong>:`;
+          if (key !== originalKey) {
+            html += ` <em>(occurrence ${key.slice(-2, -1)})</em>`;
+          }
+          html += `<pre style="margin: 5px 0 0 15px; padding: 5px; border-left: 2px solid #ccc;">${value || '[No value found]'}</pre>`;
+          html += '</li>';
+        }
+      }
+      html += '</ul>';
+      delimiterOutput.innerHTML = html;
+    });
+    li.appendChild(showBtn);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.style.marginLeft = '10px';
+    deleteBtn.addEventListener('click', () => {
+      delimiters.splice(index, 1);
+      saveSettings();
+      updateDelimiterList();
+      reprocessNote();
+    });
+    li.appendChild(deleteBtn);
+    delimiterList.appendChild(li);
+  });
+  populateDocumentDelimitersSelect(); // Update document delimiter list
+}
+
+function updateTrimSequenceList() {
+  const trimSequenceList = document.getElementById('trim-sequence-list');
+  trimSequenceList.innerHTML = '';
+  if (trimSequences.length === 0) {
+    const li = document.createElement('li');
+    li.textContent = 'No trim sequences defined.';
+    trimSequenceList.appendChild(li);
+  } else {
+    trimSequences.forEach((sequence, index) => {
+      const li = document.createElement('li');
+      li.textContent = sequence;
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.style.marginLeft = '10px';
+      deleteBtn.addEventListener('click', () => {
+        trimSequences.splice(index, 1);
+        saveSettings();
+        updateTrimSequenceList();
+      });
+      li.appendChild(deleteBtn);
+      trimSequenceList.appendChild(li);
+    });
+  }
+}
+
+function populateDocumentDelimitersSelect() {
+  const documentDelimitersSelect = document.getElementById('document-delimiters-select');
+  documentDelimitersSelect.innerHTML = '';
+  delimiters.forEach(delimiter => {
+    const option = document.createElement('option');
+    option.value = delimiter;
+    option.textContent = delimiter;
+    documentDelimitersSelect.appendChild(option);
+  });
+}
+
+function processText(text) {
+    const data = {};
+    if (!text || delimiters.length === 0) {
+        return data;
+    }
+    const sortedDelimiters = [...delimiters].sort((a, b) => b.length - a.length);
+    let matches = [];
+    for (const d of sortedDelimiters) {
+        let pos = -1;
+        while ((pos = text.indexOf(d, pos + 1)) !== -1) {
+            matches.push({ index: pos, delimiter: d });
+        }
+    }
+    matches.sort((a, b) => a.index - b.index);
+    if (matches.length === 0) {
+        return data;
+    }
+    for (let i = 0; i < matches.length; i++) {
+        const currentMatch = matches[i];
+        const nextMatch = matches[i + 1];
+        const valueStart = currentMatch.index + currentMatch.delimiter.length;
+        const valueEnd = nextMatch ? nextMatch.index : text.length;
+        const value = text.substring(valueStart, valueEnd).trim();
+        let key = currentMatch.delimiter;
+        let counter = 1;
+        const originalKey = key;
+        while (data[key]) {
+            counter++;
+            key = `${originalKey} (${counter})`;
+        }
+        data[key] = { value: value, delimiter: originalKey, originalKey: originalKey };
+    }
+    return data;
+}
+
+function reprocessNote() {
+    const noteDisplay = document.getElementById('note-display');
+    const output = document.getElementById('output');
+
+    const text = noteDisplay.value;
+    processedNoteData = processText(text); // Store processed data globally
+    if (Object.keys(processedNoteData).length > 0) {
+        let html = '<ul>';
+        for (const key in processedNoteData) {
+            const { value, originalKey } = processedNoteData[key];
+            html += '<li style="margin-bottom: 10px;">';
+            html += `<strong>${originalKey}</strong>:`;
+            if (key !== originalKey) {
+                html += ` <em>(occurrence ${key.slice(-2,-1)})</em>`;
+            }
+            html += `<pre style="margin: 5px 0 0 15px; padding: 5px; border-left: 2px solid #ccc;">${value || '[No value found]'}</pre>`;
+            html += '</li>';
+        }
+        html += '</ul>';
+        output.innerHTML = html;
+    } else {
+        output.innerHTML = '<p>No content processed. Either the note is empty or no delimiters are defined.</p>';
+    }
+}
+
+function applyTrimFunction(text) {
+  let lines = text.split('\n');
+  const isLineToTrim = (line) => {
+    const trimmedLine = line.trim();
+    if (trimmedLine.length === 0) return true;
+    if (trimmedLine.length < shortLineLength) return true;
+    if (trimSequences.some(seq => trimmedLine.includes(seq))) return true;
+    return false;
+  };
+
+  const filteredLines = lines.filter(line => !isLineToTrim(line));
+  return filteredLines.join('\n');
+}
+
+function saveSettings() {
+  const shortLineLengthInput = document.getElementById('short-line-length');
+  const exportFilenameInput = document.getElementById('export-filename');
+  const documentDelimitersSelect = document.getElementById('document-delimiters-select');
+
+  const settings = {
+    delimiters: delimiters,
+    shortLineLength: shortLineLengthInput.value,
+    trimSequences: trimSequences,
+    exportFilename: exportFilenameInput.value,
+    documentGenerationOrder: Array.from(documentDelimitersSelect.options).map(option => option.value),
+    selectedDocumentDelimiters: Array.from(documentDelimitersSelect.options).filter(option => option.selected).map(option => option.value)
+  };
+  localStorage.setItem('noteFormatterSettings', JSON.stringify(settings));
+}
+
+function loadSettings() {
+  const shortLineLengthInput = document.getElementById('short-line-length');
+  const exportFilenameInput = document.getElementById('export-filename');
+  const documentDelimitersSelect = document.getElementById('document-delimiters-select');
+
+  const savedSettings = localStorage.getItem('noteFormatterSettings');
+  if (savedSettings) {
+    const settings = JSON.parse(savedSettings);
+    delimiters = settings.delimiters || [];
+    if (settings.documentGenerationOrder) {
+      delimiters = settings.documentGenerationOrder;
+    }
+    shortLineLengthInput.value = settings.shortLineLength || 50;
+    trimSequences = settings.trimSequences || ['---', '***', '==='];
+    exportFilenameInput.value = settings.exportFilename || 'note-formatter-settings.json';
+    
+    shortLineLength = parseInt(shortLineLengthInput.value, 10);
+    exportFilename = exportFilenameInput.value;
+
+    updateDelimiterList(); // Populate select with correct order
+
+    // Load selected document delimiters after populating the select element
+    if (settings.selectedDocumentDelimiters) {
+      Array.from(documentDelimitersSelect.options).forEach(option => {
+        if (settings.selectedDocumentDelimiters.includes(option.value)) {
+          option.selected = true;
+        }
+      });
+    }
+  } else {
+  }
+  updateDelimiterList();
+  updateTrimSequenceList();
+  reprocessNote();
+}
+
+function saveSettingsToFile() {
+  const exportFilenameInput = document.getElementById('export-filename');
+  const documentDelimitersSelect = document.getElementById('document-delimiters-select');
+
+  const settings = {
+    delimiters: delimiters,
+    shortLineLength: document.getElementById('short-line-length').value,
+    trimSequences: trimSequences,
+    exportFilename: exportFilenameInput.value,
+    documentGenerationOrder: Array.from(documentDelimitersSelect.options).map(option => option.value),
+    selectedDocumentDelimiters: Array.from(documentDelimitersSelect.options).filter(option => option.selected).map(option => option.value)
+  };
+  const blob = new Blob([JSON.stringify(settings, null, 2)], {type : 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = exportFilenameInput.value;
+  a.click();
+}
+
+function loadSettingsFromFile(event) {
+  const shortLineLengthInput = document.getElementById('short-line-length');
+  const exportFilenameInput = document.getElementById('export-filename');
+  const documentDelimitersSelect = document.getElementById('document-delimiters-select');
+
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = event => {
+    const settings = JSON.parse(event.target.result);
+    delimiters = settings.delimiters || [];
+    if (settings.documentGenerationOrder) {
+      delimiters = settings.documentGenerationOrder;
+    }
+    shortLineLengthInput.value = settings.shortLineLength || 50;
+    trimSequences = settings.trimSequences || ['---', '***', '==='];
+    exportFilenameInput.value = settings.exportFilename || 'note-formatter-settings.json';
+    
+    shortLineLength = parseInt(shortLineLengthInput.value, 10);
+    exportFilename = exportFilenameInput.value;
+    
+    saveSettings(); // Save loaded settings to localStorage
+    updateDelimiterList(); // Populate select with correct order
+    updateTrimSequenceList();
+    reprocessNote();
+
+    // Load selected document delimiters after populating the select element
+    if (settings.selectedDocumentDelimiters) {
+      Array.from(documentDelimitersSelect.options).forEach(option => {
+        if (settings.selectedDocumentDelimiters.includes(option.value)) {
+          option.selected = true;
+        }
+      });
+    }
+  };
+  reader.readAsText(file);
+}
+
+document.addEventListener('DOMContentLoaded', (event) => {
+  const fileInput = document.getElementById('file-input');
+  const delimiterInput = document.getElementById('delimiter-input');
+  const addDelimiterBtn = document.getElementById('add-delimiter-btn');
+  const trimDelimiterOutputBtn = document.getElementById('trim-delimiter-output-btn');
+  const noteDisplay = document.getElementById('note-display');
+  const shortLineLengthInput = document.getElementById('short-line-length');
+  const trimSequenceInput = document.getElementById('trim-sequence-input');
+  const addTrimSequenceBtn = document.getElementById('add-trim-sequence-btn');
+  const exportSettingsBtn = document.getElementById('export-settings-btn');
+  const importSettingsBtn = document.getElementById('import-settings-btn');
+  const importSettingsInput = document.getElementById('import-settings-input');
+  const exportFilenameInput = document.getElementById('export-filename');
+  const documentDelimitersSelect = document.getElementById('document-delimiters-select');
+  const moveUpBtn = document.getElementById('move-up-btn');
+  const moveDownBtn = document.getElementById('move-down-btn');
+  const generateDocumentBtn = document.getElementById('generate-document-btn');
+  const generatedDocumentOutput = document.getElementById('generated-document-output');
+  const saveDocumentBtn = document.getElementById('save-document-btn');
+
+  fileInput.addEventListener('change', event => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = event => {
+      noteDisplay.value = event.target.result;
+      reprocessNote();
+    };
+    reader.readAsText(file);
+  });
+
+  noteDisplay.addEventListener('input', reprocessNote);
+
+  addDelimiterBtn.addEventListener('click', () => {
+    const newDelimiter = delimiterInput.value.trim();
+    if (newDelimiter && !delimiters.includes(newDelimiter)) {
+      delimiters.push(newDelimiter);
+      saveSettings();
+      updateDelimiterList();
+      reprocessNote();
+    }
+    delimiterInput.value = '';
+  });
+
+  addTrimSequenceBtn.addEventListener('click', () => {
+    const newSequence = trimSequenceInput.value.trim();
+    if (newSequence && !trimSequences.includes(newSequence)) {
+      trimSequences.push(newSequence);
+      saveSettings();
+      updateTrimSequenceList();
+    }
+    trimSequenceInput.value = '';
+  });
+
+  trimDelimiterOutputBtn.addEventListener('click', () => {
+    const currentContent = document.getElementById('delimiter-output').innerHTML;
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = currentContent;
+
+    const preElements = tempDiv.querySelectorAll('pre');
+    preElements.forEach(pre => {
+      pre.textContent = applyTrimFunction(pre.textContent);
+    });
+
+    document.getElementById('delimiter-output').innerHTML = tempDiv.innerHTML;
+  });
+
+  shortLineLengthInput.addEventListener('change', () => {
+    shortLineLength = parseInt(shortLineLengthInput.value, 10);
+    saveSettings();
+  });
+
+  exportFilenameInput.addEventListener('change', () => {
+    exportFilename = exportFilenameInput.value;
+    saveSettings();
+  });
+
+  exportSettingsBtn.addEventListener('click', saveSettingsToFile);
+  importSettingsBtn.addEventListener('click', () => importSettingsInput.click());
+  importSettingsInput.addEventListener('change', loadSettingsFromFile);
+
+  moveUpBtn.addEventListener('click', () => {
+    const selectedOptions = Array.from(documentDelimitersSelect.options).filter(option => option.selected);
+    if (selectedOptions.length === 0) return;
+
+    selectedOptions.forEach(option => {
+      const index = Array.from(documentDelimitersSelect.options).indexOf(option);
+      if (index > 0) {
+        documentDelimitersSelect.insertBefore(option, documentDelimitersSelect.options[index - 1]);
+      }
+    });
+    // Update the delimiters array to reflect the new order
+    delimiters = Array.from(documentDelimitersSelect.options).map(option => option.value);
+    saveSettings();
+  });
+
+  moveDownBtn.addEventListener('click', () => {
+    const selectedOptions = Array.from(documentDelimitersSelect.options).filter(option => option.selected);
+    if (selectedOptions.length === 0) return;
+
+    // Iterate backwards to prevent issues with shifting indices
+    for (let i = selectedOptions.length - 1; i >= 0; i--) {
+      const option = selectedOptions[i];
+      const index = Array.from(documentDelimitersSelect.options).indexOf(option);
+      if (index < documentDelimitersSelect.options.length - 1) {
+        documentDelimitersSelect.insertBefore(option, documentDelimitersSelect.options[index + 2]);
+      }
+    }
+    // Update the delimiters array to reflect the new order
+    delimiters = Array.from(documentDelimitersSelect.options).map(option => option.value);
+    saveSettings();
+  });
+
+  generateDocumentBtn.addEventListener('click', () => {
+    let generatedText = '';
+
+    Array.from(documentDelimitersSelect.options).forEach(option => {
+      const delimiter = option.value;
+      const foundData = Object.values(processedNoteData).find(data => data.originalKey === delimiter);
+      const valueToAppend = foundData ? applyTrimFunction(foundData.value) : '[No value found]';
+      generatedText += `*** ${delimiter} ***\n${valueToAppend}\n\n`;
+    });
+    generatedDocumentOutput.value = generatedText;
+  });
+
+  saveDocumentBtn.addEventListener('click', () => {
+    const content = generatedDocumentOutput.value;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'generated_document.txt'; // Default filename
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  });
+
+  loadSettings();
+});
+</script>
+</body>
+</html>
