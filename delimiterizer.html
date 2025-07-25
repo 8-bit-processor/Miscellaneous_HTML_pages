@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Recycling Delimiterizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --primary-color: #4a90e2;
+            --secondary-color: #50e3c2;
+            --text-color: #333;
+            --card-bg-color: #ffffff;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --border-color: #e0e0e0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        h1, h2, h3, h4, h5 {
+            color: var(--text-color);
+            font-weight: 500;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--card-bg-color);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px var(--shadow-color);
+            margin-bottom: 2rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: .5rem;
+            font-weight: 500;
+        }
+
+        input[type="text"], input[type="number"], textarea {
+            width: 100%;
+            padding: .75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-sizing: border-box;
+            transition: box-shadow 0.2s ease;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px var(--primary-color-translucent, rgba(74, 144, 226, 0.3));
+        }
+
+        textarea {
+            min-height: 30vh;
+            resize: vertical;
+        }
+
+        button {
+            padding: .75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            display: block;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        button:hover {
+            background-color: #357abd;
+        }
+
+        #savedDelimitersList li {
+            list-style: none;
+            padding: .75rem;
+            margin: .5rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            cursor: move;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        #savedDelimitersList {
+            padding: 0;
+        }
+
+        #output {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            min-height: 30vh;
+            background-color: #f9f9f9;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-align: center; margin-bottom: 2rem;">Data Recycling Delimiterizer</h1>
+        <div class="main-layout">
+            <div class="controls-column">
+                <div class="card">
+                    <h4>Delimiter Rules & Trimming</h4>
+                    <div class="form-grid">
+                        <div>
+                            <label for="delimiter">Delimiter</label>
+                            <input type="text" id="delimiter" placeholder="e.g., 'Chapter'">
+                        </div>
+                        <div>
+                            <label for="blankLines">Blank Lines End</label>
+                            <input type="number" id="blankLines" placeholder="e.g., 2">
+                        </div>
+                    </div>
+                    <div style="margin-top: 1rem;">
+                        <label for="textEndDelimiter">Text End Delimiter</label>
+                        <input type="text" id="textEndDelimiter" placeholder="e.g., 'END'">
+                    </div>
+                    <hr>
+                    <h5>Trimming Options</h5>
+                    <div class="form-grid">
+                        <div>
+                            <label for="textToTrim">Remove lines with</label>
+                            <input type="text" id="textToTrim" placeholder="e.g., 'DRAFT'">
+                        </div>
+                        <div>
+                            <label for="minLength">Min Line Length</label>
+                            <input type="number" id="minLength" placeholder="e.g., 5">
+                        </div>
+                    </div>
+                    <button onclick="saveDelimiter()">Save Delimiter Rule</button>
+                </div>
+                <div class="card">
+                    <h3>Saved Delimiter Rules</h3>
+                    <div id="savedDelimitersContainer">
+                        <ul id="savedDelimitersList"></ul>
+                    </div>
+                    <button onclick="generateDocument()">Generate Document</button>
+                </div>
+                <div class="card">
+                    <h3>Project</h3>
+                    <div class="form-grid">
+                        <button onclick="saveProject()">Save Project</button>
+                        <input type="file" id="loadProjectInput" style="display: none;" onchange="loadProject(event)">
+                        <button onclick="document.getElementById('loadProjectInput').click()">Load Project</button>
+                    </div>
+                </div>
+            </div>
+            <div class="document-column">
+                <div class="card">
+                    <h4>Source Document</h4>
+                    <textarea id="inputText" placeholder="Paste your document here..."></textarea>
+                </div>
+                <div class="card">
+                    <h4>Output</h4>
+                    <div id="output"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+    const inputs = document.querySelectorAll('input, textarea, button');
+    inputs.forEach(input => {
+        if(input.tagName === 'BUTTON' && input.onclick) return; // don't attach to buttons with onclick
+        input.addEventListener('input', processText);
+        input.addEventListener('change', processText);
+    });
+    processText();
+    enableDragAndDrop();
+});
+
+let savedDelimiters = [];
+let draggedItem = null;
+
+function enableDragAndDrop() {
+    const list = document.getElementById('savedDelimitersList');
+
+    list.addEventListener('dragstart', function(e) {
+        draggedItem = e.target;
+        setTimeout(function() {
+            draggedItem.style.display = 'none';
+        }, 0);
+    });
+
+    list.addEventListener('dragend', function(e) {
+        setTimeout(function() {
+            draggedItem.style.display = '';
+            draggedItem = null;
+        }, 0);
+    });
+
+    list.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(list, e.clientY);
+        const draggable = document.querySelector('.dragging');
+        if (afterElement == null) {
+            list.appendChild(draggedItem);
+        } else {
+            list.insertBefore(draggedItem, afterElement);
+        }
+    });
+
+    list.addEventListener('drop', function(e) {
+        e.preventDefault();
+        const fromIndex = parseInt(draggedItem.dataset.index);
+        const toIndex = parseInt(e.target.dataset.index);
+        const [reorderedItem] = savedDelimiters.splice(fromIndex, 1);
+        savedDelimiters.splice(toIndex, 0, reorderedItem);
+        renderSavedDelimiters();
+    });
+
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('li:not(.dragging)')];
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+}
+
+function processText() {
+    const inputText = document.getElementById('inputText').value;
+    const delimiter = document.getElementById('delimiter').value;
+    const blankLines = parseInt(document.getElementById('blankLines').value);
+    const textEndDelimiter = document.getElementById('textEndDelimiter').value;
+    const textToTrim = document.getElementById('textToTrim').value;
+    const minLength = parseInt(document.getElementById('minLength').value);
+    const outputDiv = document.getElementById('output');
+
+    if (!delimiter) {
+        outputDiv.innerHTML = '<div>Please provide a delimiter.</div>';
+        return;
+    }
+
+    const parts = inputText.split(delimiter);
+    let outputHTML = '<ul>';
+
+    for (let i = 1; i < parts.length; i++) {
+        let value = parts[i];
+        let endPos = -1;
+
+        if (blankLines > 0) {
+            const blankLineDelimiter = '\n'.repeat(blankLines + 1);
+            const blankLinePos = value.indexOf(blankLineDelimiter);
+            if (blankLinePos !== -1) {
+                endPos = blankLinePos;
+            }
+        }
+
+        if (textEndDelimiter) {
+            const textEndPos = value.indexOf(textEndDelimiter);
+            if (textEndPos !== -1 && (endPos === -1 || textEndPos < endPos)) {
+                endPos = textEndPos;
+            }
+        }
+
+        if (endPos !== -1) {
+            value = value.substring(0, endPos);
+        }
+
+        let lines = value.split('\n');
+        let trimmedLines = lines.filter(line => {
+            if (textToTrim && line.includes(textToTrim)) {
+                return false;
+            }
+            if (minLength > 0 && line.length < minLength) {
+                return false;
+            }
+            return true;
+        });
+
+        value = trimmedLines.join('\n');
+
+        outputHTML += `<li><strong>${delimiter}</strong>: <pre>${value.trim()}</pre></li>`;
+    }
+
+    outputHTML += '</ul>';
+    outputDiv.innerHTML = outputHTML;
+}
+
+function saveDelimiter() {
+    const delimiter = document.getElementById('delimiter').value;
+    const blankLines = parseInt(document.getElementById('blankLines').value);
+    const textEndDelimiter = document.getElementById('textEndDelimiter').value;
+    const textToTrim = document.getElementById('textToTrim').value;
+    const minLength = parseInt(document.getElementById('minLength').value);
+
+    if (!delimiter) {
+        alert('Please provide a delimiter to save.');
+        return;
+    }
+
+    const delimiterSettings = {
+        delimiter,
+        blankLines,
+        textEndDelimiter,
+        textToTrim,
+        minLength
+    };
+
+    savedDelimiters.push(delimiterSettings);
+    renderSavedDelimiters();
+}
+
+function renderSavedDelimiters() {
+    const savedDelimitersList = document.getElementById('savedDelimitersList');
+    savedDelimitersList.innerHTML = ''; // Clear the list
+    for (let i = 0; i < savedDelimiters.length; i++) {
+        const d = savedDelimiters[i];
+        const listItem = document.createElement('li');
+        listItem.dataset.index = i;
+        listItem.draggable = true;
+        listItem.innerHTML = `<input type="checkbox" id="delimiter-${i}" checked> <strong>${d.delimiter}</strong>`;
+        savedDelimitersList.appendChild(listItem);
+    }
+}
+
+function generateDocument() {
+    const inputText = document.getElementById('inputText').value;
+    let newDocument = '';
+
+    for (let i = 0; i < savedDelimiters.length; i++) {
+        const checkbox = document.getElementById(`delimiter-${i}`);
+        if (checkbox.checked) {
+            const d = savedDelimiters[i];
+            const parts = inputText.split(d.delimiter);
+            for (let j = 1; j < parts.length; j++) {
+                let value = parts[j];
+                let endPos = -1;
+
+                if (d.blankLines > 0) {
+                    const blankLineDelimiter = '\n'.repeat(d.blankLines + 1);
+                    const blankLinePos = value.indexOf(blankLineDelimiter);
+                    if (blankLinePos !== -1) {
+                        endPos = blankLinePos;
+                    }
+                }
+
+                if (d.textEndDelimiter) {
+                    const textEndPos = value.indexOf(d.textEndDelimiter);
+                    if (textEndPos !== -1 && (endPos === -1 || textEndPos < endPos)) {
+                        endPos = textEndPos;
+                    }
+                }
+
+                if (endPos !== -1) {
+                    value = value.substring(0, endPos);
+                }
+
+                let lines = value.split('\n');
+                let trimmedLines = lines.filter(line => {
+                    if (d.textToTrim && line.includes(d.textToTrim)) {
+                        return false;
+                    }
+                    if (d.minLength > 0 && line.length < d.minLength) {
+                        return false;
+                    }
+                    return true;
+                });
+                value = trimmedLines.join('\n');
+                newDocument += d.delimiter + value.trim() + '\n\n';
+            }
+        }
+    }
+
+    const outputDiv = document.getElementById('output');
+    outputDiv.innerHTML = `<textarea>${newDocument}</textarea>`;
+}
+
+function saveProject() {
+    const projectData = {
+        inputText: document.getElementById('inputText').value,
+        savedDelimiters: savedDelimiters
+    };
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projectData, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href",     dataStr);
+    downloadAnchorNode.setAttribute("download", "project.json");
+    document.body.appendChild(downloadAnchorNode); // required for firefox
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+}
+
+function loadProject(event) {
+    const file = event.target.files[0];
+    if (!file) {
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const contents = e.target.result;
+        const projectData = JSON.parse(contents);
+        document.getElementById('inputText').value = projectData.inputText;
+        savedDelimiters = projectData.savedDelimiters;
+        renderSavedDelimiters();
+        processText();
+    };
+    reader.readAsText(file);
+}
+    </script>
+</body>
+</html>
