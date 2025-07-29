@@ -143,7 +143,7 @@
                     <h4>Delimiter Rules & Trimming</h4>
                     <div class="form-grid">
                         <div>
-                            <label for="delimiter">Delimiter</label>
+                            <label for="delimiter">Current Delimiter</label>
                             <input type="text" id="delimiter" placeholder="e.g., 'Chapter'">
                         </div>
                         <div>
@@ -302,125 +302,94 @@ function addTextToTrimInput(initialValue = '') {
 
 function processText() {
     const inputText = document.getElementById('inputText').value;
-    const delimiter = document.getElementById('delimiter').value;
+    const currentDelimiterInput = document.getElementById('delimiter').value;
 
-    if (!delimiter) {
-        document.getElementById('output').innerHTML = '<div>Please provide a delimiter.</div>';
+    // Get all checked delimiters from the saved list
+    const activeSavedDelimiters = savedDelimiters.filter((d, index) => {
+        const checkbox = document.getElementById(`delimiter-${index}`);
+        return checkbox ? checkbox.checked : false;
+    });
+
+    // Add the current input delimiter if it's not empty
+    let allDelimiters = [];
+    if (currentDelimiterInput.trim() !== '') {
+        allDelimiters.push({
+            delimiter: currentDelimiterInput,
+            blankLines: parseInt(document.getElementById('blankLines').value),
+            textEndDelimiter: document.getElementById('textEndDelimiter').value,
+            textToTrim: Array.from(document.querySelectorAll('.textToTrimInput')).map(input => input.value).filter(value => value.trim() !== ''),
+            minLength: parseInt(document.getElementById('minLength').value)
+        });
+    }
+    allDelimiters = allDelimiters.concat(activeSavedDelimiters);
+
+    if (allDelimiters.length === 0) {
+        document.getElementById('output').innerHTML = '<div>Please provide at least one delimiter.</div>';
         return;
     }
-    const blankLines = parseInt(document.getElementById('blankLines').value);
-    const textEndDelimiter = document.getElementById('textEndDelimiter').value;
-    const textToTrimInputs = Array.from(document.querySelectorAll('.textToTrimInput')).map(input => input.value).filter(value => value.trim() !== '');
-    
-    const minLength = parseInt(document.getElementById('minLength').value);
     const outputDiv = document.getElementById('output');
+    outputDiv.innerHTML = ''; // Clear previous output
 
-    const currentDelimiterSettings = {
-        delimiter,
-        blankLines,
-        textEndDelimiter,
-        textToTrim: textToTrimInputs,
-        minLength
-    };
+    if (currentDelimiterInput.trim() !== '') {
+        const d = {
+            delimiter: currentDelimiterInput,
+            blankLines: parseInt(document.getElementById('blankLines').value),
+            textEndDelimiter: document.getElementById('textEndDelimiter').value,
+            textToTrim: Array.from(document.querySelectorAll('.textToTrimInput')).map(input => input.value).filter(value => value.trim() !== ''),
+            minLength: parseInt(document.getElementById('minLength').value)
+        };
 
-    // Combine current settings with saved delimiters, prioritizing current settings
-    const allDelimiters = [currentDelimiterSettings, ...savedDelimiters];
+        const parts = inputText.split(d.delimiter);
+        if (parts.length > 1) {
+            let value = parts[1]; // Only take the content after the first delimiter
+            let endPos = -1;
 
-    const bestDelimiter = determineBestDelimiter(inputText, allDelimiters);
-    
-
-    if (!bestDelimiter) {
-        outputDiv.innerHTML = '<div>No suitable delimiter found or provided.</div>';
-        console.log("No suitable delimiter found.");
-        return;
-    }
-
-    const parts = inputText.split(bestDelimiter.delimiter);
-    let outputHTML = '<ul>';
-
-    if (parts.length > 1) {
-        let value = parts[1]; // Only take the content after the first delimiter
-        let endPos = -1;
-
-        if (bestDelimiter.blankLines > 0) {
-            const blankLineDelimiter = '\n'.repeat(bestDelimiter.blankLines + 1);
-            const blankLinePos = value.indexOf(blankLineDelimiter);
-            if (blankLinePos !== -1) {
-                endPos = blankLinePos;
-            }
-        }
-
-        if (bestDelimiter.textEndDelimiter) {
-            const textEndPos = value.indexOf(bestDelimiter.textEndDelimiter);
-            if (textEndPos !== -1 && (endPos === -1 || textEndPos < endPos)) {
-                endPos = textEndPos;
-            }
-        }
-
-        if (endPos !== -1) {
-            value = value.substring(0, endPos);
-        }
-
-        let lines = value.split('\n');
-        let trimmedLines = lines.filter(line => {
-            if (Array.isArray(bestDelimiter.textToTrim)) {
-                for (const pattern of bestDelimiter.textToTrim) {
-                    if (line.includes(pattern)) {
-                        return false;
-                    }
+            if (d.blankLines > 0) {
+                const blankLineDelimiter = '\n'.repeat(d.blankLines + 1);
+                const blankLinePos = value.indexOf(blankLineDelimiter);
+                if (blankLinePos !== -1) {
+                    endPos = blankLinePos;
                 }
             }
-            if (bestDelimiter.minLength > 0 && line.length < bestDelimiter.minLength) {
-                return false;
+
+            if (d.textEndDelimiter) {
+                const textEndPos = value.indexOf(d.textEndDelimiter);
+                if (textEndPos !== -1 && (endPos === -1 || textEndPos < endPos)) {
+                    endPos = textEndPos;
+                }
             }
-            return true;
-        });
 
-        value = trimmedLines.join('\n');
+            if (endPos !== -1) {
+                value = value.substring(0, endPos);
+            }
 
-        outputHTML += `<li><strong>${bestDelimiter.delimiter}</strong>: <pre>${value.trim()}</pre></li>`;
+            let lines = value.split('\n');
+            let trimmedLines = lines.filter(line => {
+                if (Array.isArray(d.textToTrim)) {
+                    for (const pattern of d.textToTrim) {
+                        if (line.includes(pattern)) {
+                            return false;
+                        }
+                    }
+                }
+                if (d.minLength > 0 && line.length < d.minLength) {
+                    return false;
+                }
+                return true;
+            });
+
+            value = trimmedLines.join('\n');
+
+            outputDiv.innerHTML = `<ul><li><strong>${d.delimiter}</strong>: <pre>${value.trim()}</pre></li></ul>`;
+        } else {
+            outputDiv.innerHTML = '<div>Delimiter not found in text.</div>';
+        }
+    } else {
+        outputDiv.innerHTML = '<div>Please provide a delimiter.</div>';
     }
-
-    outputHTML += '</ul>';
-    outputDiv.innerHTML = outputHTML;
 }
 
-function determineBestDelimiter(inputText, delimiters) {
-    let blankLinePrecededDelimiters = [];
-    let validDelimiters = delimiters.filter(d => d.delimiter.trim() !== '');
-    let bestDelimiter = null;
 
-    for (const d of validDelimiters) {
-        const delimiterIndex = inputText.indexOf(d.delimiter);
-        if (delimiterIndex === -1) {
-            continue;
-        }
-
-        // Check if preceded by a blank line
-        const preceedingText = inputText.substring(0, delimiterIndex);
-        const lastNewlineIndex = preceedingText.lastIndexOf('\n');
-        const secondLastNewlineIndex = preceedingText.lastIndexOf('\n', lastNewlineIndex - 1);
-
-        if (lastNewlineIndex !== -1 && secondLastNewlineIndex !== -1 &&
-            preceedingText.substring(secondLastNewlineIndex + 1, lastNewlineIndex).trim() === '') {
-            blankLinePrecededDelimiters.push(d);
-        }
-    }
-
-    if (blankLinePrecededDelimiters.length > 0) {
-        // If multiple are preceded by blank lines, choose the one with the larger value (longer string)
-        bestDelimiter = blankLinePrecededDelimiters.reduce((prev, current) =>
-            (prev.delimiter.length > current.delimiter.length) ? prev : current
-        );
-    } else if (validDelimiters.length > 0) {
-        // If no delimiters are preceded by blank lines, choose the one with the larger value (longer string)
-        bestDelimiter = validDelimiters.reduce((prev, current) =>
-            (prev.delimiter.length > current.delimiter.length) ? prev : current
-        );
-    }
-
-    return bestDelimiter;
-}
 
 function saveDelimiter() {
     const delimiter = document.getElementById('delimiter').value;
@@ -439,7 +408,8 @@ function saveDelimiter() {
         blankLines,
         textEndDelimiter,
         textToTrim,
-        minLength
+        minLength,
+        checked: true // New delimiters are checked by default
     };
 
     savedDelimiters.push(delimiterSettings);
@@ -456,7 +426,20 @@ function renderSavedDelimiters() {
         const listItem = document.createElement('li');
         listItem.dataset.index = i;
         listItem.draggable = true;
-        listItem.innerHTML = `<input type="checkbox" id="delimiter-${i}" checked> <strong>${d.delimiter}</strong> ${textToTrimDisplay} <button onclick="deleteDelimiter(${i})" style="background-color: #dc3545; color: white; border: none; padding: 4px; border-radius: 4px; cursor: pointer; font-size: 12px; width: 40px; white-space: normal; line-height: 1;">Delete</button>`;
+        listItem.innerHTML = `<input type="checkbox" id="delimiter-${i}" ${d.checked ? 'checked' : ''}> <strong>${d.delimiter}</strong> ${textToTrimDisplay}
+            <div style="display: flex; gap: 5px;">
+                <button onclick="moveDelimiterUp(${i})" style="width: auto; padding: 4px; font-size: 12px; background-color: #007bff; color: white;">▲</button>
+                <button onclick="moveDelimiterDown(${i})" style="width: auto; padding: 4px; font-size: 12px; background-color: #007bff; color: white;">▼</button>
+                <button onclick="deleteDelimiter(${i})" style="background-color: #dc3545; color: white; border: none; padding: 4px; border-radius: 4px; cursor: pointer; font-size: 12px; width: 40px; white-space: normal; line-height: 1;">Delete</button>
+            </div>`;
+        // Add event listener to the checkbox
+        const checkbox = listItem.querySelector(`#delimiter-${i}`);
+        if (checkbox) {
+            checkbox.addEventListener('change', (event) => {
+                savedDelimiters[i].checked = event.target.checked;
+                processText(); // Re-process text when checkbox state changes
+            });
+        }
         savedDelimitersList.appendChild(listItem);
     }
 }
@@ -464,6 +447,25 @@ function renderSavedDelimiters() {
 function deleteDelimiter(index) {
     savedDelimiters.splice(index, 1);
     renderSavedDelimiters();
+    processText();
+}
+
+function moveDelimiterUp(index) {
+    if (index > 0) {
+        const [movedItem] = savedDelimiters.splice(index, 1);
+        savedDelimiters.splice(index - 1, 0, movedItem);
+        renderSavedDelimiters();
+        processText();
+    }
+}
+
+function moveDelimiterDown(index) {
+    if (index < savedDelimiters.length - 1) {
+        const [movedItem] = savedDelimiters.splice(index, 1);
+        savedDelimiters.splice(index + 1, 0, movedItem);
+        renderSavedDelimiters();
+        processText();
+    }
 }
 
 function generateDocument() {
@@ -473,7 +475,7 @@ function generateDocument() {
 
     for (let i = 0; i < savedDelimiters.length; i++) {
         const checkbox = document.getElementById(`delimiter-${i}`);
-        if (checkbox.checked) {
+        if (checkbox && checkbox.checked) { // Ensure checkbox exists and is checked
             const d = savedDelimiters[i];
             const firstDelimiterIndex = inputText.indexOf(d.delimiter);
 
@@ -626,4 +628,5 @@ document.addEventListener('DOMContentLoaded', (event) => {
 });
 
     </script>
+</body>
 </html>
