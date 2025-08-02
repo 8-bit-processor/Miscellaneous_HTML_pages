@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab Report Organizer</title>
+    <style>
+        :root {
+            --bg-color: #f0f2f5; /* Light gray background */
+            --primary-color: #007bff; /* Bootstrap primary blue */
+            --secondary-color: #6c757d; /* Bootstrap secondary gray */
+            --accent-color: #28a745; /* Green for success/highlights */
+            --text-color: #343a40; /* Darker text for readability */
+            --card-bg-color: #ffffff;
+            --shadow-color: rgba(0, 0, 0, 0.08); /* Softer shadow */
+            --border-color: #dee2e6; /* Lighter border */
+            --header-bg-color: linear-gradient(135deg, #007bff, #0056b3); /* Gradient for headers */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 3rem 2rem; /* Increased vertical padding */
+        }
+
+        .container {
+            max-width: 1200px; /* Slightly narrower container for better focus */
+            margin: 0 auto;
+        }
+
+        h1, h2, h3, h4, h5 {
+            color: var(--text-color);
+            font-weight: 600; /* Bolder headings */
+            margin-bottom: 1rem;
+        }
+
+        .main-title {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            text-shadow: 1px 1px 2px var(--shadow-color);
+        }
+
+        .card h4 {
+            font-size: 1.3rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.75rem;
+        }
+
+        .card {
+            background: var(--card-bg-color);
+            border-radius: 16px; /* More rounded corners */
+            padding: 2.5rem; /* Increased padding inside cards */
+            box-shadow: 0 15px 40px var(--shadow-color); /* More pronounced, softer shadow */
+            margin-bottom: 2.5rem;
+            border: 1px solid var(--border-color); /* Subtle border */
+        }
+
+        textarea {
+            width: 100%;
+            padding: 1rem; /* Increased padding */
+            border: 1px solid var(--border-color);
+            border-radius: 10px; /* More rounded corners */
+            box-sizing: border-box;
+            transition: all 0.3s ease; /* Smoother transitions */
+            word-wrap: break-word;
+            min-height: 35vh; /* Slightly taller */
+            resize: vertical;
+            font-size: 1rem; /* Readable font size */
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25); /* Focus ring */
+        }
+
+        button {
+            padding: 0.85rem 1.75rem; /* Slightly more padding */
+            border: none;
+            border-radius: 10px; /* Consistent rounded corners */
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600; /* Bolder text */
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease; /* Smoother transitions */
+            display: block;
+            width: 100%;
+            margin-top: 1.5rem; /* More space above buttons */
+            font-size: 1.05rem;
+        }
+
+        button:hover {
+            background-color: #0056b3; /* Darker blue on hover */
+            transform: translateY(-1px); /* Slight lift effect */
+        }
+
+        button:active {
+            transform: translateY(0); /* Press down effect */
+        }
+
+        #outputTable {
+            width: 100%;
+            border-collapse: separate; /* Use separate for rounded corners */
+            border-spacing: 0; /* Remove spacing between cells */
+            margin-top: 1.5rem;
+            border-radius: 8px; /* Rounded corners for the whole table */
+            overflow: hidden; /* Ensures rounded corners are visible */
+        }
+
+        #outputTable th, #outputTable td {
+            border: 1px solid var(--border-color);
+            padding: 1rem; /* Increased padding */
+            text-align: left;
+        }
+
+        #outputTable {
+            width: 100%;
+            border-collapse: separate; /* Use separate for rounded corners */
+            border-spacing: 0; /* Remove spacing between cells */
+            margin-top: 1.5rem;
+            border-radius: 8px; /* Rounded corners for the whole table */
+            overflow: hidden; /* Ensures rounded corners are visible */
+        }
+
+        #outputTable th, #outputTable td {
+            border: 1px solid var(--border-color);
+            padding: 1rem; /* Increased padding */
+            text-align: left;
+        }
+
+        #outputTable th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600; /* Bolder header text */
+            position: sticky; /* Keep headers visible on scroll */
+            top: 0;
+            z-index: 1;
+        }
+
+        #outputTable tr:nth-child(even) {
+            background-color: #f8f9fa; /* Zebra striping for readability */
+        }
+
+        #outputTable tr:hover {
+            background-color: #e9ecef; /* Subtle hover effect */
+        }
+
+        /* Specific rounded corners for first/last header cells */
+        #outputTable th:first-child {
+            border-top-left-radius: 8px;
+        }
+
+        #outputTable th:last-child {
+            border-top-right-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="main-title">Lab Report Organizer</h1>
+        <div class="card">
+            <h4>Source Document</h4>
+            <textarea id="inputText" placeholder="Paste your lab report here..." oninput="processLabReport(); generateOutput();"></textarea>
+            
+            <button onclick="clearSource()" style="background-color: #6c757d; margin-top: 1rem;">Clear Text</button>
+        </div>
+        <div class="card">
+            <h4>Organized Lab Data</h4>
+            <div id="testSelection" style="margin-bottom: 1rem;"></div>
+            
+            <button onclick="copyToClipboard()">Copy to Clipboard</button>
+            <div id="output">
+                <pre id="outputText"></pre>
+            </div>
+        </div>
+    </div>
+    <script>
+        let parsedData = [];
+        let allTestNames = [];
+
+        const testGroups = {
+            'CBC': ['WBC', 'RBC', 'HGB', 'HCT', 'MCV', 'MCHC', 'RDW', 'PLT', 'MPV', 'NEUT %', 'LYMPH %', 'MONO %', 'EOSIN %', 'IMMATURE GRAN %', 'ABSOLUTE NEUTROPHIL COUNT', 'ABSOLUTE LYMPHOCYTE COUNT', 'NRBC/100WBC'],
+            'CK': ['CT-TOTAL', 'CK-MM', 'CK-MB', 'CK-BB'],
+            'CHEM': ['SODIUM', 'POTASSIUM', 'CHLORIDE', 'CO2', 'UREA NITROGEN, BLOOD', 'CREATININE,SERUM', 'eGFR', 'GLUCOSE,RANDOM', 'ANION GAP'],
+            'LIVER': ['ALBUMIN', 'TOT. BILIRUBIN', 'DIR. BILIRUBIN', 'AST', 'ALT', 'ALKALINE PHOSPHATASE', 'PT/IRN'],
+            'CHOLESTEROL': ['CHOLESTEROL', 'TRIGLYCERIDE', 'LDL', 'HDL'],
+            'INFLAMMATION': ['CRP, INFRAMMATION', 'ESR'],
+            'HEMOGLOBIN A1c': ['HEMOGLOBIN A1c'],
+            'VITAMIN D TOTAL(SCREEN)': ['VITAMIN D TOTAL(SCREEN)'],
+            'URINALYSIS': ['URINE COLOR.APPEARANCE', 'SPECIFIC GRAVITY', 'URINE pH', 'URINE BLOOD', 'LEUCOCYTE ESTERASE', 'NITRITE,URINE', 'URINE PROTEIN', 'URINE GLUCOSE', 'URINE KETONES', 'URINE BIRIRUBIN', 'UROBILINOGEN'],
+            'TSH': ['TSH'],
+            'B12': ['B12']
+        };
+        const groupOrder = ['CBC', 'CK', 'CHEM', 'LIVER', 'CHOLESTEROL', 'INFLAMMATION', 'HEMOGLOBIN A1c', 'VITAMIN D TOTAL(SCREEN)', 'URINALYSIS', 'TSH', 'B12', 'Other'];
+
+        function copyToClipboard() {
+            const outputText = document.getElementById('outputText').textContent;
+            navigator.clipboard.writeText(outputText).then(() => {
+                alert('Copied to clipboard!');
+            }, () => {
+                alert('Failed to copy!');
+            });
+        }
+
+        function clearSource() {
+            document.getElementById('inputText').value = '';
+            document.getElementById('testSelection').innerHTML = '';
+            document.getElementById('outputText').textContent = '';
+            
+        }
+
+        function processLabReport() {
+            const inputText = document.getElementById('inputText').value;
+            const reports = inputText.split(/===============================================================================/g);
+            parsedData = [];
+
+            for (const report of reports) {
+                if (report.trim().length === 0) continue;
+
+                const lines = report.trim().split('\n');
+                let collectionDate = null;
+                let specimen = null;
+
+                for (const line of lines) {
+                    const dateMatch = line.match(/Specimen Collection Date:\s*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})/);
+                    if (dateMatch) {
+                        const parsedDate = new Date(dateMatch[1]);
+                        if (!isNaN(parsedDate.getTime())) {
+                            collectionDate = parsedDate;
+                        }
+                    }
+
+                    const specimenMatch = line.match(/Specimen(?: Type)?:\s*([^.]+)/i);
+                    if (specimenMatch) {
+                        specimen = specimenMatch[1].trim();
+                    }
+                }
+
+                if (!collectionDate || !specimen) continue;
+
+                let inTestSection = false;
+                let expectingDetailLine = false;
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+
+                    if (line.trim().startsWith('Test name')) {
+                        inTestSection = true;
+                        continue;
+                    }
+                    if (!inTestSection || line.trim().length === 0 || line.startsWith('=')) continue;
+
+                    if (expectingDetailLine) {
+                        const detailLineMatch = line.match(/^\s*(.+?)\s+([\d\.\-<>,\s]+[HL]?)?\s*([^\s]*?)?\s*(Ref:.*)?$/i);
+                        if (detailLineMatch) {
+                            const testName = detailLineMatch[1].trim();
+                            const result = (detailLineMatch[2] || '').trim();
+                            const units = (detailLineMatch[3] || '').trim();
+                            const range = (detailLineMatch[4] || '').trim();
+
+                            if (testName) {
+                                parsedData.push({
+                                    collectionTime: collectionDate,
+                                    specimen: specimen,
+                                    testName: testName,
+                                    result: result,
+                                    units: units,
+                                    range: range,
+                                });
+                            }
+                        }
+                        expectingDetailLine = false; // Reset the flag
+                        continue;
+                    }
+
+                    const headerLineMatch = line.match(/^\s*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\s+(.+?)\s+([\d\.\-<>,\s]+[HL]?)?\s*([^\s]*?)?\s*(Ref:.*?)?\s*([A-Z0-9]+)?\s*$/);
+                    if (headerLineMatch) {
+                        expectingDetailLine = true;
+                        continue;
+                    }
+
+                    
+                }
+            }
+
+            if (parsedData.length === 0) {
+                alert("No valid lab data found. Please check the input format.");
+                return;
+            }
+
+            allTestNames = [...new Set(parsedData.map(item => item.testName))].sort();
+            displayGroupSelection();
+            
+        }
+
+        function displayGroupSelection() {
+            const testSelectionDiv = document.getElementById('testSelection');
+            testSelectionDiv.innerHTML = '<h4>Select Test Groups to Display:</h4>';
+
+            const allGroupedTests = [].concat.apply([], Object.values(testGroups));
+            const otherTests = allTestNames.filter(testName => !allGroupedTests.includes(testName));
+
+            const displayGroups = { ...testGroups };
+            if (otherTests.length > 0) {
+                displayGroups['Other'] = otherTests;
+            }
+
+            for (const groupName of groupOrder) {
+                if (!displayGroups[groupName]) continue;
+
+                const groupContainer = document.createElement('div');
+                groupContainer.style.marginBottom = '10px';
+
+                const mainCheckbox = document.createElement('input');
+                mainCheckbox.type = 'checkbox';
+                mainCheckbox.id = groupName;
+                mainCheckbox.value = groupName;
+                mainCheckbox.checked = true;
+                mainCheckbox.onchange = generateOutput;
+                
+                const label = document.createElement('label');
+                label.htmlFor = groupName;
+                label.style.fontWeight = 'bold';
+                label.appendChild(document.createTextNode(groupName));
+
+                groupContainer.appendChild(mainCheckbox);
+                groupContainer.appendChild(label);
+
+                if (groupName === 'Other' && otherTests.length > 0) {
+                    const sublist = document.createElement('div');
+                    sublist.style.marginLeft = '20px';
+                    mainCheckbox.addEventListener('change', (e) => {
+                        sublist.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                            cb.checked = e.target.checked;
+                        });
+                    });
+
+                    for (const testName of otherTests) {
+                        const testCheckbox = document.createElement('input');
+                        testCheckbox.type = 'checkbox';
+                        testCheckbox.id = `test-${testName}`;
+                        testCheckbox.value = testName;
+                        testCheckbox.checked = true;
+                        testCheckbox.onchange = generateOutput;
+                        testCheckbox.className = 'other-test-checkbox';
+
+                        const testLabel = document.createElement('label');
+                        testLabel.htmlFor = `test-${testName}`;
+                        testLabel.appendChild(document.createTextNode(testName));
+
+                        const testContainer = document.createElement('div');
+                        testContainer.appendChild(testCheckbox);
+                        testContainer.appendChild(testLabel);
+                        sublist.appendChild(testContainer);
+                    }
+                    groupContainer.appendChild(sublist);
+                } else {
+                     mainCheckbox.dataset.tests = JSON.stringify(displayGroups[groupName]);
+                }
+
+                testSelectionDiv.appendChild(groupContainer);
+            }
+        }
+
+        function generateOutput() {
+            // 1. Get all selected tests
+            const selectedTests = new Set();
+            document.querySelectorAll('#testSelection input[type="checkbox"]:checked').forEach(checkbox => {
+                if (checkbox.id === 'Other') { // If 'Other' group is checked, add all its checked sub-items
+                    document.querySelectorAll('.other-test-checkbox:checked').forEach(otherCb => {
+                        selectedTests.add(otherCb.value);
+                    });
+                } else if (checkbox.dataset.tests) { // For other groups, add all tests from the group
+                    JSON.parse(checkbox.dataset.tests).forEach(test => selectedTests.add(test));
+                }
+            });
+
+            // 2. Filter data based on selected tests
+            const filteredData = parsedData.filter(item => selectedTests.has(item.testName));
+
+            // 3. Group by specimen
+            const groupedBySpecimen = {};
+            for (const item of filteredData) {
+                if (!groupedBySpecimen[item.specimen]) {
+                    groupedBySpecimen[item.specimen] = [];
+                }
+                groupedBySpecimen[item.specimen].push(item);
+            }
+
+            let outputText = '';
+            const maxLineWidth = 80;
+            const COLLECTION_DATE_HEADER = 'Collection Date';
+            const COLLECTION_DATE_WIDTH = COLLECTION_DATE_HEADER.length + 3; // "Collection Date" + 3 spaces
+
+            // 4. Process each specimen
+            for (const specimen in groupedBySpecimen) {
+                outputText += `\n--- ${specimen} ---\n\n`;
+                const specimenData = groupedBySpecimen[specimen];
+                const uniqueDates = [...new Set(specimenData.map(item => item.collectionTime.getTime()))]
+                    .map(time => new Date(time))
+                    .sort((a, b) => b - a);
+
+                const testInfo = {};
+                const resultsByDate = {};
+                const allSpecimenTests = [...new Set(specimenData.map(item => item.testName))];
+
+                for (const testName of allSpecimenTests) {
+                    testInfo[testName] = { range: 'N/A' };
+                }
+
+                for (const item of specimenData) {
+                    const dateKey = item.collectionTime.getTime();
+                    if (!resultsByDate[dateKey]) {
+                        resultsByDate[dateKey] = {};
+                    }
+                    resultsByDate[dateKey][item.testName] = item.result;
+                    if (item.range && testInfo[item.testName].range === 'N/A') {
+                        testInfo[item.testName].range = item.range;
+                    }
+                }
+
+                // 5. Iterate through groups in the specified order
+                for (const groupName of groupOrder) {
+                    let testsInGroupForSpecimen;
+                    if (groupName === 'Other') {
+                        const allGroupedTests = [].concat.apply([], Object.values(testGroups));
+                        testsInGroupForSpecimen = allSpecimenTests.filter(test => !allGroupedTests.includes(test) && selectedTests.has(test));
+                    } else {
+                        testsInGroupForSpecimen = (testGroups[groupName] || []).filter(test => allSpecimenTests.includes(test) && selectedTests.has(test));
+                    }
+                    
+                    if (testsInGroupForSpecimen.length === 0) continue;
+
+                    outputText += `\n  -- ${groupName} --\n`;
+
+                    let currentTestIndex = 0;
+                    while (currentTestIndex < testsInGroupForSpecimen.length) {
+                        const testChunk = [];
+                        const columnWidths = {};
+                        let currentLineWidth = COLLECTION_DATE_WIDTH;
+
+                        for (let i = currentTestIndex; i < testsInGroupForSpecimen.length; i++) {
+                            const testName = testsInGroupForSpecimen[i];
+                            let cleanedRange = testInfo[testName].range.replace(/^Ref:\s*/, ''); // Remove Ref:\n                            cleanedRange = cleanedRange.replace(/\s*\[.*?\]\s*/g, ''); // Remove any content within square brackets\n                            cleanedRange = cleanedRange.replace(/\s+/g, ' ').trim(); // Replace multiple spaces with single space and trim // Remove Ref:\n                            cleanedRange = cleanedRange.replace(/\s*\[[^\]]*\]\s*/g, '').trim(); // Remove bracketed content and trim
+                            const rangeText = cleanedRange ? `(${cleanedRange})` : '';
+                            let maxWidth = Math.max(testName.length, rangeText.length);
+                            
+                            for (const date of uniqueDates) {
+                                let result = resultsByDate[date.getTime()]?.[testName] || '';
+                                let formattedResult = result;
+                                if (result.includes('H') || result.includes('L')) {
+                                    formattedResult = `*${result}*`;
+                                }
+                                maxWidth = Math.max(maxWidth, formattedResult.length);
+                            }
+
+                            if (testChunk.length > 0 && currentLineWidth + maxWidth + 1 > maxLineWidth) {
+                                break;
+                            }
+
+                            testChunk.push(testName);
+                            columnWidths[testName] = maxWidth;
+                            currentLineWidth += maxWidth + 1;
+                        }
+                        currentTestIndex += testChunk.length;
+
+
+                        if (testChunk.length > 0) {
+                            
+                            let headerRow1 = COLLECTION_DATE_HEADER.padEnd(COLLECTION_DATE_WIDTH);
+                            let headerRow2 = ''.padEnd(COLLECTION_DATE_WIDTH);
+
+                            for (const testName of testChunk) {
+                                let cleanedRange = testInfo[testName].range.replace(/^Ref:\s*/, ''); // Remove Ref:\n                            cleanedRange = cleanedRange.replace(/\s*\[.*?\]\s*/g, ''); // Remove any content within square brackets\n                            cleanedRange = cleanedRange.replace(/\s+/g, ' ').trim(); // Replace multiple spaces with single space and trim // Remove Ref:\n                            cleanedRange = cleanedRange.replace(/\s*\[[^\]]*\]\s*/g, '').trim(); // Remove bracketed content and trim
+                            const rangeText = cleanedRange ? `(${cleanedRange})` : '';
+                                headerRow1 += testName.padEnd(columnWidths[testName] + 1) + ' ';
+                                headerRow2 += rangeText.padEnd(columnWidths[testName] + 1) + ' ';
+                            }
+                            outputText += headerRow1 + '\n';
+                            outputText += headerRow2 + '\n';
+
+                            for (const date of uniqueDates) {
+                                let row = date.toLocaleDateString().padEnd(COLLECTION_DATE_WIDTH);
+                                const dateKey = date.getTime();
+                                for (const testName of testChunk) {
+                                    let result = resultsByDate[dateKey]?.[testName] || '';
+                                    let formattedResult = result;
+                                    if (result.includes('H') || result.includes('L')) {
+                                        formattedResult = `*${result}*`;
+                                    }
+                                    row += formattedResult.padEnd(columnWidths[testName] + 1) + ' ';
+                                }
+                                outputText += row + '\n';
+                            }
+                            outputText += '\n';
+                        }
+                    }
+                }
+            }
+
+            document.getElementById('outputText').textContent = outputText;
+        }
+    </script>
+</body>
+</html>
