@@ -176,8 +176,13 @@
             <div id="testSelection" style="margin-bottom: 1rem;"></div>
             
             <button onclick="copyToClipboard()">Copy to Clipboard</button>
+            <button onclick="generateTrendReport()" style="background-color: #28a745; margin-top: 1rem;">Generate Trend Report</button>
             <div id="output">
                 <pre id="outputText"></pre>
+            </div>
+            <div class="card" style="margin-top: 2rem;">
+                <h4>Trend Analysis Report</h4>
+                <div id="trendReportOutput"></div>
             </div>
         </div>
     </div>
@@ -215,6 +220,7 @@
                 document.getElementById('inputText').value = '';
                 document.getElementById('testSelection').innerHTML = '';
                 document.getElementById('outputText').textContent = '';
+                document.getElementById('trendReportOutput').innerHTML = '';
                 
             }
 
@@ -545,6 +551,65 @@
                     }
                 }
                 document.getElementById('outputText').textContent = outputText;
+            }
+
+            window.generateTrendReport = function() {
+                const trendReportOutput = document.getElementById('trendReportOutput');
+                trendReportOutput.innerHTML = ''; // Clear previous report
+
+                if (parsedData.length < 3) {
+                    trendReportOutput.innerHTML = '<p>Not enough data for trend analysis. At least 3 results for a test are required.</p>';
+                    return;
+                }
+
+                // Group data by test name
+                const tests = {};
+                for (const item of parsedData) {
+                    if (!tests[item.testName]) {
+                        tests[item.testName] = [];
+                    }
+                    // Attempt to convert result to a number, ignore if not possible
+                    const numericResult = parseFloat(item.result);
+                    if (!isNaN(numericResult)) {
+                        tests[item.testName].push({
+                            date: item.collectionTime,
+                            value: numericResult
+                        });
+                    }
+                }
+
+                let reportHTML = '<ul>';
+                let significantTrendsFound = false;
+
+                for (const testName in tests) {
+                    const results = tests[testName].sort((a, b) => a.date - b.date); // Sort by date ascending
+
+                    if (results.length >= 3) {
+                        const recentResult = results[results.length - 1];
+                        const historicResults = results.slice(0, results.length - 1);
+                        const historicValues = historicResults.map(r => r.value);
+
+                        const mean = historicValues.reduce((a, b) => a + b, 0) / historicValues.length;
+                        const stdDev = Math.sqrt(historicValues.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / historicValues.length);
+
+                        if (stdDev > 0) {
+                            const tValue = (recentResult.value - mean) / stdDev;
+
+                            if (Math.abs(tValue) > 2) {
+                                significantTrendsFound = true;
+                                const direction = tValue > 0 ? 'upward' : 'downward';
+                                reportHTML += `<li><strong>${testName}:</strong> The most recent value (${recentResult.value}) shows a significant <strong>${direction}</strong> trend (t-value: ${tValue.toFixed(2)}).</li>`;
+                            }
+                        }
+                    }
+                }
+
+                if (!significantTrendsFound) {
+                    reportHTML += '<li>No significant trends (change > 2 standard deviations) were detected in the lab data.</li>';
+                }
+
+                reportHTML += '</ul>';
+                trendReportOutput.innerHTML = reportHTML;
             }
         });
     </script>
