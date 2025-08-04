@@ -168,7 +168,6 @@
             <h4>Source Document</h4>
             <textarea id="inputText" placeholder="Paste your lab report here..."></textarea>
             
-            <button onclick="processLabReport(); generateOutput();" style="margin-top: 1rem;">Process Lab Report</button>
             <button onclick="clearSource()" style="background-color: #6c757d; margin-top: 1rem;">Clear Text</button>
         </div>
         <div class="card">
@@ -176,7 +175,6 @@
             <div id="testSelection" style="margin-bottom: 1rem;"></div>
             
             <button onclick="copyToClipboard()">Copy to Clipboard</button>
-            <button onclick="generateTrendReport()" style="background-color: #28a745; margin-top: 1rem;">Generate Trend Report</button>
             <div id="output">
                 <pre id="outputText"></pre>
             </div>
@@ -192,6 +190,9 @@
             let parsedData = [];
             let allTestNames = [];
 
+            const inputText = document.getElementById('inputText');
+            inputText.addEventListener('input', processLabReport);
+
             const testGroups = {
                 'CBC': ['WBC', 'RBC', 'HGB', 'HCT', 'MCV', 'MCHC', 'RDW', 'PLT', 'MPV', 'NEUT %', 'LYMPH %', 'MONO %', 'EOSIN %', 'IMMATURE GRAN %', 'ABSOLUTE NEUTROPHIL COUNT', 'ABSOLUTE LYMPHOCYTE COUNT', 'NRBC/100WBC'],
                 'CK': ['CT-TOTAL', 'CK-MM', 'CK-MB', 'CK-BB'],
@@ -201,11 +202,100 @@
                 'INFLAMMATION': ['CRP, INFRAMMATION', 'ESR'],
                 'HEMOGLOBIN A1c': ['HEMOGLOBIN A1c'],
                 'VITAMIN D TOTAL(SCREEN)': ['VITAMIN D TOTAL(SCREEN)'],
+                'PROSTATIC SPECIFIC ANTIGEN': ['PROSTATIC SPECIFIC ANTIGEN'],
                 'URINALYSIS': ['URINE COLOR.APPEARANCE', 'SPECIFIC GRAVITY', 'URINE pH', 'URINE BLOOD', 'LEUCOCYTE ESTERASE', 'NITRITE,URINE', 'URINE PROTEIN', 'URINE GLUCOSE', 'URINE KETONES', 'URINE BIRIRUBIN', 'UROBILINOGEN'],
                 'TSH': ['TSH'],
                 'B12': ['B12']
             };
-            const groupOrder = ['CBC', 'CK', 'CHEM', 'LIVER', 'CHOLESTEROL', 'INFLAMMATION', 'HEMOGLOBIN A1c', 'VITAMIN D TOTAL(SCREEN)', 'URINALYSIS', 'TSH', 'B12', 'Other'];
+            const groupOrder = ['CBC', 'CK', 'CHEM', 'LIVER', 'CHOLESTEROL', 'INFLAMMATION', 'HEMOGLOBIN A1c', 'VITAMIN D TOTAL(SCREEN)', 'PROSTATIC SPECIFIC ANTIGEN', 'URINALYSIS', 'TSH', 'B12', 'Other'];
+
+            function processLabReport() {
+                const inputText = document.getElementById('inputText').value;
+                const reports = inputText.split(/===============================================================================/g);
+                parsedData = [];
+
+                allTestNames = [];
+                for (const group in testGroups) {
+                    allTestNames.push(...testGroups[group]);
+                }
+                allTestNames = [...new Set(allTestNames)].sort();
+
+                for (const report of reports) {
+                    if (report.trim().length === 0) continue;
+
+                    const lines = report.trim().split('\n');
+                    let collectionDate = null;
+                    let specimen = null;
+
+                    for (const line of lines) {
+                        const dateRegex = /Specimen Collection Date:\s*([A-Za-z]{3}\s+\d{1,2},\s+\d{4}@\d{1,2}:\d{2})/;
+                        const dateMatch = line.match(dateRegex);
+                        if (dateMatch) {
+                            const parsedDate = new Date(dateMatch[1]);
+                            if (!isNaN(parsedDate.getTime())) {
+                                collectionDate = parsedDate;
+                            }
+                        }
+
+                        const specimenMatch = line.match(/Specimen(?: Type)?:\s*([^.]+)/i);
+                        if (specimenMatch) {
+                            specimen = specimenMatch[1].trim();
+                        }
+                    }
+
+                    if (!collectionDate || !specimen) {
+                        continue;
+                    }
+
+                    let inTestSection = false;
+                    for (const line of lines) {
+                        if (line.trim().startsWith('Test name')) {
+                            inTestSection = true;
+                            continue;
+                        }
+                        if (!inTestSection || line.trim().length === 0 || line.startsWith('=')) {
+                            continue;
+                        }
+
+                        for (const knownTestName of allTestNames) {
+                            if (line.trim().startsWith(knownTestName)) {
+                                const remainingLine = line.trim().substring(knownTestName.length).trim();
+                                const partsMatch = remainingLine.match(/^\s*([^\s]+(?:\s+[^\s]+)*?)\s*([^\s]+(?:\s+[^\s]+)*?)?\s*(.*)$/);
+
+                                if (partsMatch) {
+                                    const result = (partsMatch[1] || '').trim();
+                                    const units = (partsMatch[2] || '').trim();
+                                    let range = (partsMatch[3] || '').trim();
+
+                                    if (range.startsWith('Ref:')) {
+                                        range = range.substring(4).trim();
+                                    }
+                                    range = range.replace(/\s*\[\d+\]/g, '').trim();
+                                    range = range.replace(/\s+/g, ' ').trim();
+
+                                    parsedData.push({
+                                        collectionTime: collectionDate,
+                                        specimen: specimen,
+                                        testName: knownTestName,
+                                        result: result,
+                                        units: units,
+                                        range: range
+                                    });
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (parsedData.length === 0) {
+                    return;
+                }
+
+                allTestNames = [...new Set(parsedData.map(item => item.testName))].sort();
+                displayGroupSelection();
+                generateOutput();
+            }
 
             window.copyToClipboard = function() {
                 const outputText = document.getElementById('outputText').textContent;
@@ -221,131 +311,6 @@
                 document.getElementById('testSelection').innerHTML = '';
                 document.getElementById('outputText').textContent = '';
                 document.getElementById('trendReportOutput').innerHTML = '';
-                
-            }
-
-            window.processLabReport = function() {
-                const inputText = document.getElementById('inputText').value;
-                const reports = inputText.split(/===============================================================================/g);
-                parsedData = [];
-
-                console.log('Starting processLabReport');
-                console.log('Number of reports found:', reports.length);
-
-                // Populate allTestNames from testGroups for initial matching
-                allTestNames = [];
-                for (const group in testGroups) {
-                    allTestNames.push(...testGroups[group]);
-                }
-                allTestNames = [...new Set(allTestNames)].sort(); // Ensure unique and sorted
-                console.log('Total known test names:', allTestNames.length);
-
-                for (const report of reports) {
-                    if (report.trim().length === 0) continue;
-
-                    const lines = report.trim().split('\n');
-                    let collectionDate = null;
-                    let specimen = null;
-
-                    console.log('Processing a new report. Number of lines:', lines.length);
-
-                    for (const line of lines) {
-                        console.log('Checking line for date:', line);
-                        const dateRegex = /Specimen Collection Date:\s*([A-Za-z]{3}\s+\d{1,2},\s+\d{4}@\d{1,2}:\d{2})/;
-                        const dateMatch = line.match(dateRegex);
-                        console.log('Date regex pattern:', dateRegex.source);
-                        console.log('Date match result:', dateMatch);
-                        if (dateMatch) {
-                            console.log('Date regex matched. Captured date string:', dateMatch[1]);
-                            const parsedDate = new Date(dateMatch[1]);
-                            console.log('Parsed Date object:', parsedDate, 'isNaN(parsedDate.getTime()):', isNaN(parsedDate.getTime()));
-                            if (!isNaN(parsedDate.getTime())) {
-                                collectionDate = parsedDate;
-                                console.log('Found collection date:', collectionDate);
-                            } else {
-                                console.log('Date parsing failed: new Date() returned an invalid date for:', dateMatch[1]);
-                            }
-                        } else {
-                            console.log('Date regex did NOT match line:', line);
-                        }
-
-                        const specimenMatch = line.match(/Specimen(?: Type)?:\s*([^.]+)/i);
-                        if (specimenMatch) {
-                            specimen = specimenMatch[1].trim();
-                            console.log('Found specimen:', specimen);
-                        }
-                    }
-
-                    if (!collectionDate || !specimen) {
-                        console.log('Skipping report: No collection date or specimen found.');
-                        continue;
-                    }
-
-                    let inTestSection = false;
-                    for (const line of lines) {
-                        console.log('Current line:', line);
-                        if (line.trim().startsWith('Test name')) {
-                            inTestSection = true;
-                            console.log('Entered test section.');
-                            continue;
-                        }
-                        if (!inTestSection || line.trim().length === 0 || line.startsWith('=')) {
-                            console.log('Skipping line (not in test section or empty/separator):', line);
-                            continue;
-                        }
-
-                        for (const knownTestName of allTestNames) {
-                            if (line.trim().startsWith(knownTestName)) {
-                                console.log('Matched known test name:', knownTestName, 'in line:', line);
-                                const remainingLine = line.trim().substring(knownTestName.length).trim();
-                                console.log('Remaining line after test name:', remainingLine);
-                                // Now parse remainingLine for result, units, and range
-                                // This regex will try to capture: result, units, and then the rest as range
-                                const partsMatch = remainingLine.match(/^\s*([^\s]+(?:\s+[^\s]+)*?)\s*([^\s]+(?:\s+[^\s]+)*?)?\s*(.*)$/);
-
-                                if (partsMatch) {
-                                    const result = (partsMatch[1] || '').trim();
-                                    const units = (partsMatch[2] || '').trim();
-                                    let range = (partsMatch[3] || '').trim();
-
-                                    console.log('Parsed - Result:', result, 'Units:', units, 'Range:', range);
-
-                                    // Remove "Ref:" at the beginning of the range
-                                    if (range.startsWith('Ref:')) {
-                                        range = range.substring(4).trim();
-                                    }
-                                    // Remove [integer] parts
-                                    range = range.replace(/\s*\[\d+\]/g, '').trim();
-                                    // Collapse multiple spaces to a single space and trim again
-                                    range = range.replace(/\s+/g, ' ').trim();
-                                    console.log('Cleaned Range:', range);
-
-                                    parsedData.push({
-                                        collectionTime: collectionDate,
-                                        specimen: specimen,
-                                        testName: knownTestName,
-                                        result: result,
-                                        units: units,
-                                        range: range // Store the cleaned range
-                                    });
-                                    console.log('Pushed to parsedData. Current parsedData length:', parsedData.length);
-                                    break; // Found a match, move to next line
-                                } else {
-                                    console.log('partsMatch failed for remainingLine:', remainingLine);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (parsedData.length === 0) {
-                    alert("No valid lab data found. Please check the input format.");
-                    return;
-                }
-
-                console.log('Finished processing. Final parsedData length:', parsedData.length);
-                allTestNames = [...new Set(parsedData.map(item => item.testName))].sort();
-                displayGroupSelection();
             }
 
             window.displayGroupSelection = function() {
@@ -415,6 +380,25 @@
 
                     testSelectionDiv.appendChild(groupContainer);
                 }
+            }
+
+            function formatResult(result, range) {
+                let formattedResult = result;
+                if (result.includes('H') || result.includes('L')) {
+                    formattedResult = `*${result}*`;
+                }
+                const numericResult = parseFloat(result);
+                if (!isNaN(numericResult) && range) {
+                    const rangeParts = range.match(/(\d+\.?\d*)\s*-\s*(\d+\.?\d*)/);
+                    if (rangeParts) {
+                        const lowerBound = parseFloat(rangeParts[1]);
+                        const upperBound = parseFloat(rangeParts[2]);
+                        if (numericResult < lowerBound || numericResult > upperBound) {
+                            formattedResult = `*'${result}'*`;
+                        }
+                    }
+                }
+                return formattedResult;
             }
 
             window.generateOutput = function() {
@@ -501,10 +485,7 @@
                                 
                                 for (const date of uniqueDates) {
                                     let result = resultsByDate[date.getTime()]?.[testName] || '';
-                                    let formattedResult = result;
-                                    if (result.includes('H') || result.includes('L')) {
-                                        formattedResult = `*${result}*`;
-                                    }
+                                    let formattedResult = formatResult(result, testInfo[testName].range);
                                     maxWidth = Math.max(maxWidth, formattedResult.length);
                                 }
 
@@ -537,10 +518,7 @@
                                     const dateKey = date.getTime();
                                     for (const testName of testChunk) {
                                         let result = resultsByDate[dateKey]?.[testName] || '';
-                                        let formattedResult = result;
-                                        if (result.includes('H') || result.includes('L')) {
-                                            formattedResult = `*${result}*`;
-                                        }
+                                        let formattedResult = formatResult(result, testInfo[testName].range);
                                         row += formattedResult.padEnd(columnWidths[testName] + 1) + ' ';
                                     }
                                     outputText += row + '\n';
@@ -553,64 +531,7 @@
                 document.getElementById('outputText').textContent = outputText;
             }
 
-            window.generateTrendReport = function() {
-                const trendReportOutput = document.getElementById('trendReportOutput');
-                trendReportOutput.innerHTML = ''; // Clear previous report
-
-                if (parsedData.length < 3) {
-                    trendReportOutput.innerHTML = '<p>Not enough data for trend analysis. At least 3 results for a test are required.</p>';
-                    return;
-                }
-
-                // Group data by test name
-                const tests = {};
-                for (const item of parsedData) {
-                    if (!tests[item.testName]) {
-                        tests[item.testName] = [];
-                    }
-                    // Attempt to convert result to a number, ignore if not possible
-                    const numericResult = parseFloat(item.result);
-                    if (!isNaN(numericResult)) {
-                        tests[item.testName].push({
-                            date: item.collectionTime,
-                            value: numericResult
-                        });
-                    }
-                }
-
-                let reportHTML = '<ul>';
-                let significantTrendsFound = false;
-
-                for (const testName in tests) {
-                    const results = tests[testName].sort((a, b) => a.date - b.date); // Sort by date ascending
-
-                    if (results.length >= 3) {
-                        const recentResult = results[results.length - 1];
-                        const historicResults = results.slice(0, results.length - 1);
-                        const historicValues = historicResults.map(r => r.value);
-
-                        const mean = historicValues.reduce((a, b) => a + b, 0) / historicValues.length;
-                        const stdDev = Math.sqrt(historicValues.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / historicValues.length);
-
-                        if (stdDev > 0) {
-                            const tValue = (recentResult.value - mean) / stdDev;
-
-                            if (Math.abs(tValue) > 2) {
-                                significantTrendsFound = true;
-                                const direction = tValue > 0 ? 'upward' : 'downward';
-                                reportHTML += `<li><strong>${testName}:</strong> The most recent value (${recentResult.value}) shows a significant <strong>${direction}</strong> trend (t-value: ${tValue.toFixed(2)}).</li>`;
-                            }
-                        }
-                    }
-                }
-
-                if (!significantTrendsFound) {
-                    reportHTML += '<li>No significant trends (change > 2 standard deviations) were detected in the lab data.</li>';
-                }
-
-                reportHTML += '</ul>';
-                trendReportOutput.innerHTML = reportHTML;
-            }
+            
         });
     </script>
 </body>
