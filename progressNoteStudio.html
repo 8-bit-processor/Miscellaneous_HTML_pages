@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress Note Studio</title>
+    <style>
+body {
+    font-family: sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background-color: #333;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+}
+
+.container {
+    display: flex;
+    height: calc(100vh - 50px);
+}
+
+#sidebar {
+    width: 250px;
+    background-color: #f0f0f0;
+    padding: 20px;
+    border-right: 1px solid #ccc;
+    overflow-y: auto;
+}
+
+#main-content {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+#notes-container {
+    height: calc(100% - 150px);
+    overflow-y: scroll;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    padding: 10px;
+}
+
+.note {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 10px;
+}
+
+.note input[type="text"] {
+    font-weight: bold;
+    font-size: 1.1em;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    margin-bottom: 5px;
+}
+
+.note textarea {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    resize: vertical;
+    min-height: 100px;
+    width: calc(100% - 22px); /* Adjust for padding and border */
+}
+
+.note button {
+    background-color: #f44336;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-top: 5px;
+    width: 100px;
+    align-self: flex-end;
+}
+
+#controls {
+    margin-top: 20px;
+}
+
+#add-note, #save-notes, #save-as-button, #load-button, #import-button, #copy-to-clipboard {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+#notes-index {
+    list-style-type: none;
+    padding: 0;
+}
+
+#notes-index li {
+    padding: 5px;
+    cursor: pointer;
+}
+
+#notes-index li:hover {
+    background-color: #ddd;
+}
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Progress Note Studio</h1>
+    </header>
+    <div class="container">
+        <aside id="sidebar">
+            <h2>Section Index</h2>
+            <ul id="notes-index"></ul>
+            <hr>
+            <h2>Import Window</h2>
+            <textarea id="import-textarea" placeholder="Paste your document here..."></textarea>
+        </aside>
+        <main id="main-content">
+            <div id="notes-container"></div>
+            <div id="controls">
+                <button id="add-note">Add Note Section</button>
+                <button id="copy-to-clipboard">Copy Document to Clipboard</button>
+            </div>
+        </main>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const notesContainer = document.getElementById('notes-container');
+    const addNoteButton = document.getElementById('add-note');
+    const copyToClipboardButton = document.getElementById('copy-to-clipboard');
+    const importTextarea = document.getElementById('import-textarea');
+    const importButton = document.getElementById('import-button');
+    const notesIndex = document.getElementById('notes-index');
+
+    let notes = [];
+    let sortable = null;
+
+    // Load existing notes from the server
+    const data = [{"title": "New Section Title", "content": ""}];
+    notes = data.map(note => typeof note === 'string' ? {title: '', content: note} : note);
+    renderNotes();
+
+
+    function renderNotes() {
+        notesContainer.innerHTML = '';
+        notes.forEach((note, index) => {
+            const noteElement = createNoteElement(note, index);
+            notesContainer.appendChild(noteElement);
+        });
+        renderNotesIndex();
+    }
+
+    function renderNotesIndex() {
+        if (sortable) {
+            sortable.destroy();
+        }
+        notesIndex.innerHTML = '';
+        notes.forEach((note, index) => {
+            const title = note.title || 'Untitled Note';
+            const li = document.createElement('li');
+            li.textContent = title;
+            li.dataset.index = index;
+            li.addEventListener('click', () => {
+                const noteElement = notesContainer.querySelector(`[data-index="${index}"]`);
+                noteElement.scrollIntoView({ behavior: 'smooth' });
+            });
+            notesIndex.appendChild(li);
+        });
+
+        sortable = new Sortable(notesIndex, {
+            animation: 150,
+            onEnd: function () {
+                const newNotes = [];
+                Array.from(notesIndex.children).forEach(child => {
+                    newNotes.push(notes[child.dataset.index]);
+                });
+                notes = newNotes;
+                renderNotes();
+            }
+        });
+    }
+
+
+    function createNoteElement(note, index) {
+        const noteDiv = document.createElement('div');
+        noteDiv.classList.add('note');
+        noteDiv.dataset.index = index;
+
+        const titleInput = document.createElement('input');
+        titleInput.type = 'text';
+        titleInput.placeholder = 'New Section Title';
+        titleInput.value = note.title;
+        titleInput.dataset.index = index;
+        titleInput.addEventListener('change', updateNote);
+
+        const textarea = document.createElement('textarea');
+        textarea.value = note.content;
+        textarea.dataset.index = index;
+        textarea.addEventListener('change', updateNote);
+
+        const removeButton = document.createElement('button');
+        removeButton.textContent = 'Remove';
+        removeButton.dataset.index = index;
+        removeButton.addEventListener('click', removeNote);
+        
+        noteDiv.appendChild(titleInput);
+        noteDiv.appendChild(textarea);
+        noteDiv.appendChild(removeButton);
+
+        return noteDiv;
+    }
+
+    function addNote() {
+        notes.push({title: 'New Section Title', content: ''});
+        renderNotes();
+    }
+
+    function removeNote(event) {
+        const index = event.target.dataset.index;
+        notes.splice(index, 1);
+        renderNotes();
+    }
+
+    function updateNote(event) {
+        const index = event.target.dataset.index;
+        const titleInput = notesContainer.querySelector(`[data-index="${index}"] input`);
+        const textarea = notesContainer.querySelector(`[data-index="${index}"] textarea`);
+        notes[index] = {
+            title: titleInput.value,
+            content: textarea.value
+        };
+        renderNotesIndex();
+    }
+
+    function importFromString() {
+        const text = importTextarea.value;
+        if (!text) {
+            return;
+        }
+
+        const newNotes = [];
+        const noteSections = text.split(/\n\s*\n/);
+
+        noteSections.forEach(section => {
+            const lines = section.split('\n');
+            if (lines.length > 0) {
+                const title = lines[0];
+                const content = lines.slice(1).join('\n');
+                newNotes.push({ title, content });
+            }
+        });
+
+        notes = newNotes;
+        renderNotes();
+        importTextarea.value = '';
+    }
+
+    function copyToClipboard() {
+        let textToCopy = '';
+        notes.forEach((note, index) => {
+            textToCopy += note.title + '\n' + note.content;
+            if (index < notes.length - 1) {
+                textToCopy += '\n\n';
+            }
+        });
+
+        navigator.clipboard.writeText(textToCopy)
+            .then(() => {
+                notes = []; // Clear the notes array
+                renderNotes(); // Re-render the UI
+            })
+            .catch(err => {
+                console.error('Error copying notes: ', err);
+                alert('Error copying notes.');
+            });
+    }
+
+    addNoteButton.addEventListener('click', addNote);
+    copyToClipboardButton.addEventListener('click', copyToClipboard);
+    importTextarea.addEventListener('paste', (event) => {
+        event.preventDefault(); // Prevent the default paste behavior
+        const pastedText = event.clipboardData.getData('text');
+        importTextarea.value = pastedText;
+        importFromString();
+    });
+    importButton.addEventListener('click', importFromString);
+});
+    </script>
+</body>
+</html>
