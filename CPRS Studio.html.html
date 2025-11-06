@@ -1,0 +1,711 @@
+<!--
+This file is a single-page web application for creating and managing medical progress notes.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress Note Studio</title>
+    <style>
+
+body {
+    font-family: sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background-color: #333;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+}
+
+.container {
+    display: flex;
+    height: calc(100vh - 50px);
+}
+
+#sidebar {
+    width: 250px;
+    background-color: #f0f0f0;
+    padding: 20px;
+    border-right: 1px solid #ccc;
+    overflow-y: auto;
+}
+
+#main-content {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+#notes-container {
+    height: calc(100% - 150px);
+    overflow-y: scroll;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    padding: 10px;
+}
+
+.note {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 10px;
+}
+
+.note input[type="text"] {
+    font-weight: bold;
+    font-size: 1.1em;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    margin-bottom: 5px;
+}
+
+.note textarea {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    resize: vertical;
+    min-height: 100px;
+    width: calc(100% - 22px); /* Adjust for padding and border */
+}
+
+.note button {
+    background-color: #f44336;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-top: 5px;
+    width: 100px;
+    align-self: flex-end;
+}
+
+#controls {
+    margin-top: 20px;
+}
+
+#add-note, #save-notes, #save-as-button, #load-button, #import-button, #copy-to-clipboard {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+#notes-index {
+    list-style-type: none;
+    padding: 0;
+}
+
+#notes-index li {
+    padding: 5px;
+    cursor: pointer;
+}
+
+#notes-index li:hover {
+    background-color: #ddd;
+}
+/* 
+This section defines the style for the lab data preview modal.
+*/
+.modal {
+    display: none; 
+    position: fixed; 
+    z-index: 1; 
+    left: 0;
+    top: 0;
+    width: 100%; 
+    height: 100%; 
+    overflow: auto; 
+    background-color: rgb(0,0,0); 
+    background-color: rgba(0,0,0,0.4); 
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+}
+
+.close-button {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Progress Note Studio</h1>
+    </header>
+    <div class="container">
+        <aside id="sidebar">
+            <h2>Section Index</h2>
+            <ul id="notes-index"></ul>
+            <hr>
+            <h2>Import Window</h2>
+            <textarea id="import-textarea" placeholder="Paste your document here..."></textarea>
+            <hr>
+            <h2>Lab Import Window</h2>
+            <textarea id="lab-import-textarea" placeholder="Paste your lab data here..."></textarea>
+        </aside>
+        <main id="main-content">
+            <div id="notes-container"></div>
+            <div id="controls">
+                <button id="add-note">Add Note Section</button>
+                <button id="copy-to-clipboard">Copy Document to Clipboard</button>_
+            </div>
+        </main>
+    </div>
+    <div id="lab-preview-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Formatted Lab Data Preview</h2>
+            <pre id="lab-preview-content"></pre>
+            <button id="accept-lab-data">Accept</button>
+            <button id="cancel-lab-data">Cancel</button>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script>
+
+/*
+This 'testGroups' object is a data structure that categorizes various medical lab tests into logical groups. 
+The keys of the object represent the names of the test groups (e.g., 'CBC', 'CHEM'), and the values are arrays of strings, 
+where each string is the name of a specific test belonging to that group. This structure is used to organize and process 
+lab data in a structured manner.
+*/
+const testGroups = {
+    'CBC': ['WBC', 'RBC', 'HGB', 'HCT', 'MCV', 'MCHC', 'RDW', 'PLT', 'MPV', 'NEUT %', 'LYMPH %', 'MONO %', 'EOSIN %', 'IMMATURE GRAN %', 'ABSOLUTE NEUTROPHIL COUNT', 'ABSOLUTE LYMPHOCYTE COUNT', 'NRBC/100WBC'],
+    'CK': ['CT-TOTAL', 'CK-MM', 'CK-MB', 'CK-BB'],
+    'CHEM': ['SODIUM', 'POTASSIUM', 'CHLORIDE', 'CO2', 'UREA NITROGEN, BLOOD', 'CREATININE,SERUM', 'eGFR', 'GLUCOSE,RANDOM', 'ANION GAP'],
+    'LIVER': ['ALBUMIN', 'TOT. BILIRUBIN', 'DIR. BILIRUBIN', 'AST', 'ALT', 'ALKALINE PHOSPHATASE', 'PT/IRN'],
+    'CHOLESTEROL': ['CHOLESTEROL', 'TRIGLYCERIDE', 'LDL', 'HDL'],
+    'INFLAMMATION': ['CRP, INFRAMMATION', 'ESR'],
+    'HEMOGLOBIN A1c': ['HEMOGLOBIN A1c'],
+    'VITAMIN D TOTAL(SCREEN)': ['VITAMIN D TOTAL(SCREEN)'],
+    'URINALYSIS': ['URINE COLOR.APPEARANCE', 'SPECIFIC GRAVITY', 'URINE pH', 'URINE BLOOD', 'LEUCOCYTE ESTERASE', 'NITRITE,URINE', 'URINE PROTEIN', 'URINE GLUCOSE', 'URINE KETONES', 'URINE BIRIRUBIN', 'UROBILINOGEN'],
+    'TSH': ['TSH'],
+    'B12': ['B12'],
+    'PROSTATE': ['PSA']
+};
+
+/*
+This 'groupOrder' array defines the specific order in which the lab test groups should be displayed. 
+It ensures that when the lab data is formatted and presented, the groups appear in a consistent and predefined sequence 
+(e.g., CBC first, then CK, and so on). This is crucial for maintaining a standardized and easily readable report format.
+The 'Other' category is a catch-all for any tests that are not explicitly defined in the 'testGroups' object.
+*/
+const groupOrder = ['CBC', 'CK', 'CHEM', 'LIVER', 'CHOLESTEROL', 'INFLAMMATION', 'HEMOGLOBIN A1c', 'VITAMIN D TOTAL(SCREEN)', 'URINALYSIS', 'TSH', 'B12', 'PROSTATE', 'Other'];
+/*
+This function, 'isAbnormal', is designed to determine if a given lab test result is outside of its normal range.
+It takes two string arguments, 'result' and 'range', which represent the lab test's numeric value and its
+normal range, respectively.
+*/
+function isAbnormal(result, range) {
+    if (typeof result !== 'string' || typeof range !== 'string' || result.trim() === '' || range.trim() === '') {
+        return false;
+    }
+    const numericResult = parseFloat(result.replace(/[<>]/g, ''));
+    if (isNaN(numericResult)) {
+        return false;
+    }
+    const rangeMatch = range.match(/(\d*\.?\d+)\s*-\s*(\d*\.?\d+)/);
+    if (rangeMatch) {
+        const low = parseFloat(rangeMatch[1]);
+        const high = parseFloat(rangeMatch[2]);
+        return numericResult < low || numericResult > high;
+    }
+    return false;
+}
+/*
+The 'formatRow' function is a utility designed to create a formatted string representation of a row of data. 
+It takes two arguments: 'columns', an array of strings where each string is the content of a cell in the row, 
+and 'widths', an array of numbers where each number is the desired width for the corresponding column.
+*/
+function formatRow(columns, widths) {
+    let row = '';
+    columns.forEach((col, i) => {
+        row += col.padEnd(widths[i]);
+    });
+    return row;
+}
+
+/*
+This 'processLabReport' function is designed to parse a raw text lab report, extract the relevant data, 
+and then format it into a structured and readable summary. It takes a single argument, 'text', which is the 
+string content of the lab report.
+*/
+function processLabReport(text) {
+    // Split the input text into multiple reports using a specific delimiter.
+    const reports = text.split(/===============================================================================/g);
+    let parsedData = [];
+    let allTestNames = [];
+    // Collect all known test names from the 'testGroups' object.
+    for (const group in testGroups) {
+        allTestNames.push(...testGroups[group]);
+    }
+    // Create a unique, sorted list of all test names.
+    allTestNames = [...new Set(allTestNames)].sort();
+
+    // Iterates over each report to extract data.
+    for (const report of reports) {
+        if (report.trim().length === 0) continue;
+        const lines = report.trim().split('\n');
+        let collectionDate = null;
+        let specimen = null;
+    
+        // Iterate through each line to find the collection date and specimen type.
+        for (const line of lines) {
+            const dateMatch = line.match(/Specimen Collection Date:\s*([A-Za-z]{3}\s+\d{1,2},\s+\d{4}@\d{1,2}:\d{2})/);
+            if (dateMatch) {
+                const parsedDate = new Date(dateMatch[1]);
+                if (!isNaN(parsedDate.getTime())) {
+                    collectionDate = parsedDate;
+                }
+            }
+            const specimenMatch = line.match(/Specimen(?: Type)?:\s*([^.]+)/i);
+            if (specimenMatch) {
+                specimen = specimenMatch[1].trim();
+            }
+        }
+    
+        if (!collectionDate || !specimen) continue;
+    
+        // After finding date and specimen, look for test results.
+        let inTestSection = false;
+        for (const line of lines) {
+            if (line.trim().startsWith('Test name')) {
+                inTestSection = true;
+                continue;
+            }
+            if (!inTestSection || line.trim().length === 0 || line.startsWith('=')) continue;
+    
+            // Match each line against the list of known test names.
+            for (const knownTestName of allTestNames) {
+                if (line.trim().startsWith(knownTestName)) {
+                    const remainingLine = line.trim().substring(knownTestName.length).trim();
+                    const partsMatch = remainingLine.match(/^\s*([^\s]+(?:\s+[^s]+)*?)\s*([^\s]+(?:\s+[^s]+)*?)?\s*(.*)$/);
+                    if (partsMatch) {
+                        const result = (partsMatch[1] || '').trim();
+                        const units = (partsMatch[2] || '').trim();
+                        let range = (partsMatch[3] || '').trim();
+                        if (range.startsWith('Ref:')) {
+                            range = range.substring(4).trim();
+                        }
+                        range = range.replace(/\s*\[\d+\]/g, '').trim();
+                        range = range.replace(/\s+/g, ' ').trim();
+                        // Push the extracted data into the 'parsedData' array.
+                        parsedData.push({
+                            collectionTime: collectionDate,
+                            specimen: specimen,
+                            testName: knownTestName,
+                            result: result,
+                            units: units,
+                            range: range
+                        });
+                        break; 
+                    }
+                }
+            }
+        }
+    }
+    
+    // If no data was parsed, it returns null.
+    if (parsedData.length === 0) {
+        return null;
+    }
+    
+    // Group the parsed data by specimen type.
+    const groupedBySpecimen = {};
+    for (const item of parsedData) {
+        if (!groupedBySpecimen[item.specimen]) {
+            groupedBySpecimen[item.specimen] = [];
+        }
+        groupedBySpecimen[item.specimen].push(item);
+    }
+
+    let output = '';
+
+    // Iterate through each specimen group to format the output.
+    for (const specimen in groupedBySpecimen) {
+        const specimenData = groupedBySpecimen[specimen];
+        // Get unique collection dates and sorts them in descending order.
+        const uniqueDates = [...new Set(specimenData.map(item => item.collectionTime.getTime()))]
+            .map(time => new Date(time))
+            .sort((a, b) => b - a);
+        const testInfo = {};
+        const resultsByDate = {};
+        const allSpecimenTests = [...new Set(specimenData.map(item => item.testName))];
+
+        // Collect reference ranges for each test.
+        for (const testName of allSpecimenTests) {
+            const firstData = specimenData.find(d => d.testName === testName);
+            testInfo[testName] = { range: firstData ? firstData.range : 'N/A' };
+        }
+
+        // Organize results by date.
+        for (const item of specimenData) {
+            const dateKey = item.collectionTime.getTime();
+            if (!resultsByDate[dateKey]) {
+                resultsByDate[dateKey] = {};
+            }
+            resultsByDate[dateKey][item.testName] = item.result;
+        }
+
+        output += `--- ${specimen} ---\n\n`;
+
+        // Iterate through the predefined group order to structure the output.
+        for (const groupName of groupOrder) {
+            let testsInGroupForSpecimen;
+            if (groupName === 'Other') {
+                const allGroupedTests = [].concat.apply([], Object.values(testGroups));
+                testsInGroupForSpecimen = allSpecimenTests.filter(test => !allGroupedTests.includes(test));
+            } else {
+                testsInGroupForSpecimen = (testGroups[groupName] || []).filter(test => allSpecimenTests.includes(test));
+            }
+
+            if (testsInGroupForSpecimen.length === 0) continue;
+
+            output += `-- ${groupName} --\n`;
+
+            const maxLineWidth = 75;
+            
+            // Calculate column widths for formatting.
+            // Define the columns for the table.
+            const columns = ['Collection Date', ...testsInGroupForSpecimen];
+            // Initialize column widths based on header lengths.
+            const widths = columns.map(c => c.length);
+
+            // Iterate over each unique date to calculate the maximum width required for each column.
+            uniqueDates.forEach(date => {
+                const dateKey = date.getTime();
+                testsInGroupForSpecimen.forEach((testName, i) => {
+                    const result = resultsByDate[dateKey]?.[testName] || '';
+                    const abnormal = isAbnormal(result, testInfo[testName]?.range || '');
+                    const cell = result + (abnormal ? ' *' : '');
+                    // Update the width of the column if the current cell is wider.
+                    widths[i+1] = Math.max(widths[i+1], cell.length);
+                });
+            });
+
+            // Create header columns with test names and their reference ranges.
+            const headerColumns = ['Collection Date', ...testsInGroupForSpecimen.map(t => `${t} (${testInfo[t].range || ''})`)];
+            // Update column widths based on the length of the header columns.
+            headerColumns.forEach((h, i) => widths[i] = Math.max(widths[i], h.length));
+
+            // Calculate the total width of the table.
+            let totalWidth = widths.reduce((sum, w) => sum + w + 2, 0) - 2;
+
+            // If the total width exceeds the maximum line width, adjust the column widths.
+            if (totalWidth > maxLineWidth) {
+                const overflow = totalWidth - maxLineWidth;
+                const distributableWidth = widths.slice(1).reduce((sum, w) => sum + w, 0);
+                const reductionFactor = overflow / distributableWidth;
+                // Proportionally reduce the width of each column.
+                for (let i = 1; i < widths.length; i++) {
+                    widths[i] = Math.floor(widths[i] - widths[i] * reductionFactor);
+                }
+            }
+            
+            // Recalculate the total width after adjustment.
+            totalWidth = widths.reduce((sum, w) => sum + w + 2, 0) - 2;
+            // If the total width still exceeds the maximum, truncate the last column.
+            if(totalWidth > maxLineWidth) {
+                widths[widths.length - 1] -= (totalWidth - maxLineWidth);
+            }
+
+
+            // Create the header string with the adjusted column widths.
+            let header = '';
+            headerColumns.forEach((h, i) => header += h.substring(0, widths[i]).padEnd(widths[i] + 2));
+            output += header + '\n';
+
+            // Create each row of the table with the adjusted column widths.
+            for (const date of uniqueDates) {
+                let row = (date.toLocaleDateString()).padEnd(widths[0] + 2);
+                const dateKey = date.getTime();
+
+                for (let i = 0; i < testsInGroupForSpecimen.length; i++) {
+                    const testName = testsInGroupForSpecimen[i];
+                    const result = resultsByDate[dateKey]?.[testName] || '';
+                    const range = testInfo[testName]?.range || '';
+                    let cell = result;
+                    if (isAbnormal(result, range)) {
+                        cell += ' *';
+                    }
+                    row += cell.padEnd(widths[i + 1] + 2);
+                }
+                // Truncate the row if it exceeds the maximum line width.
+                output += row.substring(0, maxLineWidth) + '\n';
+            }
+            output += '\n';
+        }
+    }
+    return output;
+}
+/*
+This event listener waits for the HTML document to be fully loaded and parsed before executing 
+the enclosed code to ensure that all DOM elements are available for manipulation.
+*/
+document.addEventListener('DOMContentLoaded', function() {
+    const notesContainer = document.getElementById('notes-container');
+    const addNoteButton = document.getElementById('add-note');
+    const copyToClipboardButton = document.getElementById('copy-to-clipboard');
+    const importTextarea = document.getElementById('import-textarea');
+    const notesIndex = document.getElementById('notes-index');
+
+    let notes = [];
+    let sortable = null;
+
+    // Initialize with a default starting note
+    const data = [{"title": "New Section Title", "content": ""}];
+    notes = data.map(note => typeof note === 'string' ? {title: '', content: note} : note);
+    renderNotes();
+
+/*
+This 'renderNotes' function is responsible for displaying the notes in the main content area.
+It clears the existing notes and then iterates through the 'notes' array, creating and appending a new note element for each one.
+*/
+    function renderNotes() {
+        notesContainer.innerHTML = '';
+        notes.forEach((note, index) => {
+            const noteElement = createNoteElement(note, index);
+            notesContainer.appendChild(noteElement);
+        });
+        renderNotesIndex();
+    }
+/*
+This 'renderNotesIndex' function is responsible for building the interactive section index in the sidebar.
+It allows users to quickly navigate between different note sections.
+*/
+    function renderNotesIndex() {
+        if (sortable) {
+            sortable.destroy();
+        }
+        notesIndex.innerHTML = '';
+        notes.forEach((note, index) => {
+            const title = note.title || 'Untitled Note';
+            const li = document.createElement('li');
+            li.textContent = title;
+            li.dataset.index = index;
+            li.addEventListener('click', () => {
+                const noteElement = notesContainer.querySelector(`[data-index="${index}"]`);
+                noteElement.scrollIntoView({ behavior: 'smooth' });
+            });
+            notesIndex.appendChild(li);
+        });
+
+        sortable = new Sortable(notesIndex, {
+            animation: 150,
+            onEnd: function () {
+                const newNotes = [];
+                Array.from(notesIndex.children).forEach(child => {
+                    newNotes.push(notes[child.dataset.index]);
+                });
+                notes = newNotes;
+                renderNotes();
+            }
+        });
+    }
+
+/*
+The 'createNoteElement' function is a core component of the note management system.
+It dynamically generates the HTML structure for a single note, including its title, content area, and a 'Remove' button.
+This function takes two arguments: 'note', an object containing the title and content of the note, and 'index',
+the position of the note in the 'notes' array.
+*/
+    function createNoteElement(note, index) {
+        const noteDiv = document.createElement('div');
+        noteDiv.classList.add('note');
+        noteDiv.dataset.index = index;
+
+        const titleInput = document.createElement('input');
+        titleInput.type = 'text';
+        titleInput.placeholder = 'New Section Title';
+        titleInput.value = note.title;
+        titleInput.dataset.index = index;
+        titleInput.addEventListener('change', updateNote);
+
+        const textarea = document.createElement('textarea');
+        textarea.value = note.content;
+        textarea.dataset.index = index;
+        textarea.addEventListener('change', updateNote);
+
+        const removeButton = document.createElement('button');
+        removeButton.textContent = 'Remove';
+        removeButton.dataset.index = index;
+        removeButton.addEventListener('click', removeNote);
+        
+        noteDiv.appendChild(titleInput);
+        noteDiv.appendChild(textarea);
+        noteDiv.appendChild(removeButton);
+
+        return noteDiv;
+    }
+/*
+This 'addNote' function is responsible for adding a new, empty note section to the application.
+When called, it pushes a new note object with a default title and empty content to the 'notes' array
+and then calls 'renderNotes()' to update the display.
+*/
+    function addNote() {
+        notes.push({title: 'New Section Title', content: ''});
+        renderNotes();
+    }
+/*
+This 'removeNote' function handles the deletion of a note section.
+It is triggered when a user clicks the 'Remove' button associated with a note.
+The function retrieves the index of the note to be removed from the button's 'dataset' property,
+removes the corresponding note object from the 'notes' array using 'splice',
+and then calls 'renderNotes()' to update the user interface.
+*/
+    function removeNote(event) {
+        const index = event.target.dataset.index;
+        notes.splice(index, 1);
+        renderNotes();
+    }
+/*
+This 'updateNote' function is responsible for saving changes made to a note's title or content.
+It's triggered by the 'change' event on either the title input field or the content textarea.
+The function retrieves the note's index from the event target's 'dataset' and then finds the corresponding
+input and textarea elements within the notes container. It creates a new note object with the updated values
+and replaces the old note object in the 'notes' array. Finally, it calls 'renderNotesIndex()' to refresh the section index.
+*/
+    function updateNote(event) {
+        const index = event.target.dataset.index;
+        const titleInput = notesContainer.querySelector(`[data-index="${index}"] input`);
+        const textarea = notesContainer.querySelector(`[data-index="${index}"] textarea`);
+        notes[index] = {
+            title: titleInput.value,
+            content: textarea.value
+        };
+        renderNotesIndex();
+    }
+/*
+This 'importFromString' function is designed to parse a block of text from the import textarea
+and convert it into multiple note sections. It splits the text into sections based on double newlines,
+and then for each section, it treats the first line as the title and the rest as the content.
+The newly created notes replace the existing ones, and the UI is updated.
+*/
+    function importFromString() {
+        const text = importTextarea.value;
+        if (!text) {
+            return;
+        }
+
+        const newNotes = [];
+        const noteSections = text.split(/\n\s*\n/);
+
+        noteSections.forEach(section => {
+            const lines = section.split('\n');
+            if (lines.length > 0) {
+                const title = lines[0];
+                const content = lines.slice(1).join('\n');
+                newNotes.push({ title, content });
+            }
+        });
+
+        notes = newNotes;
+        renderNotes();
+        importTextarea.value = '';
+    }
+/*
+This 'copyToClipboard' function is responsible for gathering the content of all notes,
+formatting it into a single string with titles and content separated, and then copying
+that string to the user's clipboard using the browser's Clipboard API.
+After successfully copying, it clears all the notes from the application.
+*/
+    function copyToClipboard() {
+        let textToCopy = '';
+        notes.forEach((note, index) => {
+            textToCopy += note.title + '\n' + note.content;
+            if (index < notes.length - 1) {
+                textToCopy += '\n\n';
+            }
+        });
+
+        navigator.clipboard.writeText(textToCopy)
+            .then(() => {
+                notes = []; // Clear the notes array
+                renderNotes(); // Re-render the UI
+            })
+            .catch(err => {
+                console.error('Error copying notes: ', err);
+                alert('Error copying notes.');
+            });
+    }
+
+    addNoteButton.addEventListener('click', addNote);
+    copyToClipboardButton.addEventListener('click', copyToClipboard);
+
+    importTextarea.addEventListener('paste', (event) => {
+        event.preventDefault(); // Prevent the default paste behavior
+        const pastedText = event.clipboardData.getData('text');
+        importTextarea.value = pastedText;
+        importFromString();
+    });
+
+    const labImportTextarea = document.getElementById('lab-import-textarea');
+    const labPreviewModal = document.getElementById('lab-preview-modal');
+    const labPreviewContent = document.getElementById('lab-preview-content');
+    const acceptLabDataButton = document.getElementById('accept-lab-data');
+    const cancelLabDataButton = document.getElementById('cancel-lab-data');
+    const closeModalButton = document.querySelector('.close-button');
+
+    let formattedLabText = '';
+
+    labImportTextarea.addEventListener('paste', (event) => {
+        event.preventDefault();
+        const pastedText = event.clipboardData.getData('text');
+        formattedLabText = processLabReport(pastedText);
+        if (formattedLabText) {
+            labPreviewContent.textContent = formattedLabText;
+            labPreviewModal.style.display = 'block';
+        } else {
+            alert('Could not parse the lab data. Please ensure it is in the correct format.');
+        }
+    });
+
+    acceptLabDataButton.addEventListener('click', () => {
+        const newNote = {title: 'Labs', content: formattedLabText};
+        notes.push(newNote);
+        renderNotes();
+        labImportTextarea.value = '';
+        labPreviewModal.style.display = 'none';
+    });
+
+    cancelLabDataButton.addEventListener('click', () => {
+        labPreviewModal.style.display = 'none';
+    });
+
+    closeModalButton.addEventListener('click', () => {
+        labPreviewModal.style.display = 'none';
+    });
+
+    window.addEventListener('click', (event) => {
+        if (event.target == labPreviewModal) {
+            labPreviewModal.style.display = 'none';
+        }
+    });
+});
+    </script>
+</body>
