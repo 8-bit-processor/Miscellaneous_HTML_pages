@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress Note Studio</title>
+    <style>
+body {
+    font-family: sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background-color: #333;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+}
+
+.container {
+    display: flex;
+    height: calc(100vh - 50px);
+}
+
+#sidebar {
+    width: 250px;
+    background-color: #f0f0f0;
+    padding: 20px;
+    border-right: 1px solid #ccc;
+    overflow-y: auto;
+}
+
+#main-content {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+#notes-container {
+    height: calc(100% - 150px);
+    overflow-y: scroll;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    padding: 10px;
+}
+
+.note {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 10px;
+}
+
+.note input[type="text"] {
+    font-weight: bold;
+    font-size: 1.1em;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    margin-bottom: 5px;
+}
+
+.note textarea {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    resize: vertical;
+    min-height: 100px;
+    width: calc(100% - 22px); /* Adjust for padding and border */
+}
+
+.note-footer {
+    display: flex;
+    justify-content: flex-start;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.note-footer button {
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 3px;
+    cursor: pointer;
+    width: 120px;
+}
+
+.remove-note {
+    background-color: #f44336;
+}
+
+.copy-note {
+    background-color: #2196F3;
+}
+
+#controls {
+    margin-top: 20px;
+}
+
+#add-note, #add-copilot-prompt, #save-notes, #save-as-button, #load-button, #import-button, #copy-to-clipboard, #clear-notes {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+#add-copilot-prompt {
+    background-color: #2196F3;
+}
+
+#clear-notes {
+    background-color: #f44336;
+}
+
+#notes-index {
+    list-style-type: none;
+    padding: 0;
+}
+
+#notes-index li {
+    padding: 5px;
+    cursor: pointer;
+}
+
+#notes-index li:hover {
+    background-color: #ddd;
+}
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Progress Note Studio</h1>
+    </header>
+    <div class="container">
+        <aside id="sidebar">
+            <h2>Section Index</h2>
+            <ul id="notes-index"></ul>
+            <hr>
+            <h2>Import Window</h2>
+            <textarea id="import-textarea" placeholder="Paste your document here..."></textarea>
+        </aside>
+        <main id="main-content">
+            <div id="notes-container"></div>
+            <div id="controls">
+                <button id="add-note">Add Note Section</button>
+                <button id="add-copilot-prompt">Add Copilot Prompt</button>
+                <button id="copy-to-clipboard">Copy Document to Clipboard</button>
+                <button id="clear-notes">Clear All Notes</button>
+            </div>
+        </main>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const notesContainer = document.getElementById('notes-container');
+    const addNoteButton = document.getElementById('add-note');
+    const addCopilotPromptButton = document.getElementById('add-copilot-prompt');
+    const copyToClipboardButton = document.getElementById('copy-to-clipboard');
+    const clearNotesButton = document.getElementById('clear-notes');
+    const importTextarea = document.getElementById('import-textarea');
+    const notesIndex = document.getElementById('notes-index');
+
+    let notes = [];
+    let sortable = null;
+
+    // Load existing notes from the server
+    const data = [{"title": "New Section Title", "content": ""}];
+    notes = data.map(note => typeof note === 'string' ? {title: '', content: note} : note);
+    renderNotes();
+
+
+    function renderNotes() {
+        notesContainer.innerHTML = '';
+        notes.forEach((note, index) => {
+            const noteElement = createNoteElement(note, index);
+            notesContainer.appendChild(noteElement);
+        });
+        renderNotesIndex();
+    }
+
+    function renderNotesIndex() {
+        if (sortable) {
+            sortable.destroy();
+        }
+        notesIndex.innerHTML = '';
+        notes.forEach((note, index) => {
+            const title = note.title || 'Untitled Note';
+            const li = document.createElement('li');
+            li.textContent = title;
+            li.dataset.index = index;
+            li.addEventListener('click', () => {
+                const noteElement = notesContainer.querySelector(`[data-index="${index}"]`);
+                if (noteElement) {
+                    noteElement.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+            notesIndex.appendChild(li);
+        });
+
+        sortable = new Sortable(notesIndex, {
+            animation: 150,
+            onEnd: function () {
+                const newNotes = [];
+                Array.from(notesIndex.children).forEach(child => {
+                    newNotes.push(notes[child.dataset.index]);
+                });
+                notes = newNotes;
+                renderNotes();
+            }
+        });
+    }
+
+
+    function createNoteElement(note, index) {
+        const noteDiv = document.createElement('div');
+        noteDiv.classList.add('note');
+        noteDiv.dataset.index = index;
+
+        const titleInput = document.createElement('input');
+        titleInput.type = 'text';
+        titleInput.placeholder = 'New Section Title';
+        titleInput.value = note.title;
+        titleInput.dataset.index = index;
+        titleInput.addEventListener('change', updateNote);
+
+        const textarea = document.createElement('textarea');
+        textarea.value = note.content;
+        textarea.dataset.index = index;
+        textarea.addEventListener('change', updateNote);
+
+        const footer = document.createElement('div');
+        footer.classList.add('note-footer');
+
+        const removeButton = document.createElement('button');
+        removeButton.textContent = 'Remove';
+        removeButton.classList.add('remove-note');
+        removeButton.dataset.index = index;
+        removeButton.addEventListener('click', removeNote);
+
+        const copySectionButton = document.createElement('button');
+        copySectionButton.textContent = 'Copy Section';
+        copySectionButton.classList.add('copy-note');
+        copySectionButton.dataset.index = index;
+        copySectionButton.addEventListener('click', (event) => copyNoteSection(event, copySectionButton));
+        
+        footer.appendChild(removeButton);
+        footer.appendChild(copySectionButton);
+
+        noteDiv.appendChild(titleInput);
+        noteDiv.appendChild(textarea);
+        noteDiv.appendChild(footer);
+
+        return noteDiv;
+    }
+
+    function copyNoteSection(event, button) {
+        const index = event.target.dataset.index;
+        const note = notes[index];
+        const textToCopy = note.title + '\n' + note.content;
+
+        navigator.clipboard.writeText(textToCopy)
+            .then(() => {
+                const originalColor = button.style.backgroundColor;
+                button.style.backgroundColor = '#FF9800'; // Conspicuous Bright Orange
+                setTimeout(() => {
+                    button.style.backgroundColor = originalColor;
+                }, 1000);
+            })
+            .catch(err => {
+                console.error('Error copying note section: ', err);
+                alert('Error copying note section.');
+            });
+    }
+
+    function addNote() {
+        notes.push({title: 'New Section Title', content: ''});
+        renderNotes();
+    }
+
+    function addCopilotPrompt() {
+        const promptContent = `You are a medical document assistant. Your task is to assemble and format the provided note sections into a cohesive, professional progress note suitable for entry into CPRS (Computerized Patient Record System). 
+
+Instructions:
+1. Maintain clinical accuracy and professional tone.
+2. Use standard medical abbreviations and terminology.
+3. Organize the sections into a logical flow (e.g., Subjective, Objective, Assessment, Plan).
+4. Remove any redundant information or formatting artifacts.
+5. Ensure the final output is ready for direct copy-pasting into a patient's medical record.
+
+Please process and format the following sections:`;
+        notes.unshift({title: 'Copilot Prompt Instructions', content: promptContent});
+        renderNotes();
+    }
+
+    function removeNote(event) {
+        const index = event.target.dataset.index;
+        notes.splice(index, 1);
+        renderNotes();
+    }
+
+    function updateNote(event) {
+        const index = event.target.dataset.index;
+        const titleInput = notesContainer.querySelector(`[data-index="${index}"] input`);
+        const textarea = notesContainer.querySelector(`[data-index="${index}"] textarea`);
+        if (titleInput && textarea) {
+            notes[index] = {
+                title: titleInput.value,
+                content: textarea.value
+            };
+        }
+        renderNotesIndex();
+    }
+
+    function importFromString() {
+        const text = importTextarea.value;
+        if (!text) {
+            return;
+        }
+
+        const newNotes = [];
+        const noteSections = text.split(/\n\s*\n/);
+
+        noteSections.forEach(section => {
+            const lines = section.split('\n');
+            if (lines.length > 0) {
+                const title = lines[0];
+                const content = lines.slice(1).join('\n');
+                newNotes.push({ title, content });
+            }
+        });
+
+        notes = newNotes;
+        renderNotes();
+        importTextarea.value = '';
+    }
+
+    function copyToClipboard() {
+        let textToCopy = '';
+        notes.forEach((note, index) => {
+            textToCopy += note.title + '\n' + note.content;
+            if (index < notes.length - 1) {
+                textToCopy += '\n\n';
+            }
+        });
+
+        navigator.clipboard.writeText(textToCopy)
+            .then(() => {
+                const originalColor = copyToClipboardButton.style.backgroundColor;
+                copyToClipboardButton.style.backgroundColor = '#FF9800'; // Conspicuous Bright Orange
+                
+                setTimeout(() => {
+                    copyToClipboardButton.style.backgroundColor = originalColor;
+                }, 1000);
+            })
+            .catch(err => {
+                console.error('Error copying notes: ', err);
+                alert('Error copying notes.');
+            });
+    }
+
+    function clearNotes() {
+        if (confirm('Are you sure you want to clear all notes?')) {
+            notes = [];
+            renderNotes();
+        }
+    }
+
+    addNoteButton.addEventListener('click', addNote);
+    addCopilotPromptButton.addEventListener('click', addCopilotPrompt);
+    copyToClipboardButton.addEventListener('click', copyToClipboard);
+    clearNotesButton.addEventListener('click', clearNotes);
+    importTextarea.addEventListener('paste', (event) => {
+        event.preventDefault(); // Prevent the default paste behavior
+        const pastedText = event.clipboardData.getData('text');
+        importTextarea.value = pastedText;
+        importFromString();
+    });
+});
+    </script>
+</body>
+</html>
